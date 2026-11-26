@@ -411,6 +411,7 @@ class TestProyectoTelenovelaCOP(unittest.TestCase):
         constructos_prohibidos = [
             r"\bopt\s+(?:bool|int|float|set)\b",
             r"\bdefault\b",
+            r"\belseif\b",
             r"\benum2int\s*\(",
             r"\bindex_set_1of2\s*\(",
             r"\barg_sort\s*\(",
@@ -452,6 +453,74 @@ class TestProyectoTelenovelaCOP(unittest.TestCase):
                 (r2["evaluacion"]["costo_total"], r2["evaluacion"]["tiempo_compartido"]),
                 (450, 6),
             )
+
+    def test_07_recuperacion_simetrias_y_enumeracion_nombres_arbitrarios(self) -> None:
+        import itertools
+
+        # 1. Recuperacion algebraica completa de la orbita de soluciones optimas en Instancia01_P1
+        #    E_vacias = {2, 7} (q=2), gemelas G1={3,5}, G2={4,6}, canonica = [2, 7, 3, 5, 8, 1, 4, 6] (Costo*=225)
+        datos_i1 = parsear_archivo_dzn(RAIZ / "datos" / "parte1" / "Instancia01_P1.dzn")
+        res_i1 = ejecutar_minizinc(RAIZ / "datos" / "parte1" / "Instancia01_P1.dzn", solver="gecode")
+        canon = res_i1["evaluacion"]["orden"]
+        costo_opt = res_i1["evaluacion"]["costo_total"]
+        self.assertEqual(costo_opt, 225)
+
+        vacias = canon[:2]
+        activo = canon[2:]
+        orbita_i1 = set()
+        for swap_35 in (False, True):
+            for swap_46 in (False, True):
+                seq = list(activo)
+                if swap_35:
+                    seq = [5 if x == 3 else (3 if x == 5 else x) for x in seq]
+                if swap_46:
+                    seq = [6 if x == 4 else (4 if x == 6 else x) for x in seq]
+                for invertir in (False, True):
+                    bloque = list(reversed(seq)) if invertir else list(seq)
+                    for perm_vac in itertools.permutations(vacias):
+                        for k_pref in range(len(vacias) + 1):
+                            cand = tuple(list(perm_vac[:k_pref]) + bloque + list(perm_vac[k_pref:]))
+                            orbita_i1.add(cand)
+
+        self.assertEqual(len(orbita_i1), 48, "La orbita simetrica S1xS2xS3 debe tener 2*2*2*(2!*3)=48 soluciones")
+        for perm in orbita_i1:
+            ev = evaluar_cronograma(datos_i1, list(perm))
+            self.assertEqual(ev["costo_total"], costo_opt)
+
+        # 2. Recuperacion de la solucion comentada en Trivial2.dzn ([4, 3, 6, 2, 1, 5]) desde [3, 4, 6, 2, 1, 5]
+        datos_t2 = parsear_archivo_dzn(RAIZ / "datos" / "parte2" / "Trivial2.dzn")
+        for perm_t2 in ([3, 4, 6, 2, 1, 5], [4, 3, 6, 2, 1, 5], [5, 1, 2, 6, 4, 3], [5, 1, 2, 6, 3, 4]):
+            ev_t2 = evaluar_cronograma(datos_t2, perm_t2)
+            self.assertTrue(ev_t2["factible"])
+            self.assertEqual((ev_t2["costo_total"], ev_t2["tiempo_compartido"]), (450, 6))
+
+        # 3. Preservacion del orden de declaracion en enum ACTORES con nombres arbitrarios y Disponibilidad desordenada
+        dzn_nombres = (
+            "ACTORES = {NarcisoPerfiles, Catalina, Armando, Beatriz};\n"
+            "Escenas = [| 1,1,0,0,0,0,10\n"
+            "           | 0,1,1,1,0,1,20\n"
+            "           | 0,0,0,0,1,1,15\n"
+            "           | 1,1,0,0,1,1,13 |];\n"
+            "Duracion = [2,1,1,1,3,4];\n"
+            "Disponibilidad = [| Armando, 0\n"
+            "                  | Beatriz, 10\n"
+            "                  | NarcisoPerfiles, 5\n"
+            "                  | Catalina, 8 |];\n"
+            "Evitar = [| NarcisoPerfiles, Catalina\n"
+            "          | Catalina, Armando |];\n"
+        )
+        with tempfile.NamedTemporaryFile("w", suffix=".dzn", delete=False, encoding="utf-8") as tmp:
+            tmp.write(dzn_nombres)
+            ruta_nom = Path(tmp.name)
+        try:
+            res_nom = ejecutar_minizinc(ruta_nom, solver="chuffed", timeout_ms=10000)
+            self.assertTrue(res_nom["optimo_probado"])
+            self.assertEqual(
+                (res_nom["evaluacion"]["costo_total"], res_nom["evaluacion"]["tiempo_compartido"]),
+                (450, 6),
+            )
+        finally:
+            ruta_nom.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":
