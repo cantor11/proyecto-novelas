@@ -241,6 +241,76 @@ def evaluar_cronograma(datos: Dict[str, Any], orden: List[int]) -> Dict[str, Any
     }
 
 
+def construir_codigo_variante_mzn(
+    modelo_base: Path,
+    parte: int,
+    estrategia: int = 1,
+    usar_simetrias: bool = True,
+    usar_redundantes: bool = True,
+) -> str:
+    """
+    Genera en memoria una variante experimental del modelo MiniZinc (para ablacion
+    sin simetrias, sin redundantes o con estrategias alternativas E2..E8) sin
+    requerir tipos opcionales ajenos a los fundamentos del curso en los archivos .mzn.
+    """
+    codigo = modelo_base.read_text(encoding="utf-8")
+
+    if not usar_simetrias:
+        codigo = re.sub(
+            r"% 6\. ELIMINACION DE SIMETRIAS \(S1, S2, S3\).*?(?=% -+\s*\n% 7\. RESTRICCIONES REDUNDANTES)",
+            "% 6. ELIMINACION DE SIMETRIAS (DESACTIVADA EN ABLACION)\n",
+            codigo,
+            flags=re.S,
+        )
+
+    if not usar_redundantes:
+        codigo = re.sub(
+            r"% 7\. RESTRICCIONES REDUNDANTES DE FORTALECIMIENTO DE PROPAGACION \(R1 - R4\).*?(?=% -+\s*\n% 8\. ESTRATEGIA DE BUSQUEDA)",
+            "% 7. RESTRICCIONES REDUNDANTES (DESACTIVADAS EN ABLACION)\n",
+            codigo,
+            flags=re.S,
+        )
+
+    if estrategia != 1:
+        obj = "ObjetivoLex" if parte == 2 else "Costo"
+        bloque_e = {
+            2: (
+                "array[POSICIONES] of var ESCENAS: OrdenExt = [\n"
+                "    if k mod 2 == 1 then Orden[(k + 1) div 2] else Orden[M - (k div 2) + 1] endif\n"
+                "    | k in POSICIONES\n"
+                "];\n"
+                f"solve :: int_search(OrdenExt, input_order, indomain_min, complete) minimize {obj};\n"
+            ),
+            3: f"solve :: int_search(Orden, input_order, indomain_min, complete) minimize {obj};\n",
+            4: f"solve :: int_search(Orden, first_fail, indomain_min, complete) minimize {obj};\n",
+            5: f"solve :: int_search(Orden, first_fail, indomain_split, complete) minimize {obj};\n",
+            6: (
+                "array[1..M] of var POSICIONES: PosCostoDesc = [\n"
+                "    Pos[sum(e in ESCENAS where rango_peso_esc[e] == M - k + 1)(e)] | k in 1..M\n"
+                "];\n"
+                f"solve :: int_search(PosCostoDesc, input_order, indomain_median, complete) minimize {obj};\n"
+            ),
+            7: (
+                "array[POSICIONES] of var 1..M: OrdenRango = [rango_peso_esc[Orden[k]] | k in POSICIONES];\n"
+                "array[POSICIONES] of var 1..M: OrdenRangoExt = [\n"
+                "    if k mod 2 == 1 then OrdenRango[(k + 1) div 2] else OrdenRango[M - (k div 2) + 1] endif\n"
+                "    | k in POSICIONES\n"
+                "];\n"
+                f"solve :: int_search(OrdenRangoExt, dom_w_deg, indomain_min, complete) minimize {obj};\n"
+            ),
+            8: f"solve minimize {obj};\n",
+        }[estrategia]
+
+        codigo = re.sub(
+            r"% 8\. ESTRATEGIA DE BUSQUEDA Y DISTRIBUCION.*?(?=% -+\s*\n% 9\. INTERFAZ DE SALIDA)",
+            f"% 8. ESTRATEGIA DE BUSQUEDA E{estrategia}\n" + bloque_e + "\n",
+            codigo,
+            flags=re.S,
+        )
+
+    return codigo
+
+
 def ejecutar_minizinc(
     ruta_dzn: Path,
     solver: str = "chuffed",
@@ -251,42 +321,66 @@ def ejecutar_minizinc(
     ruta_salida_txt: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """Ejecuta el modelo MiniZinc correspondiente y verifica el resultado."""
+    import tempfile
+
     datos = parsear_archivo_dzn(ruta_dzn)
     modelo = MODELO_PARTE2 if datos["parte"] == 2 else MODELO_PARTE1
 
-    defs = (
-        f"opt_estrategia={estrategia};"
-        f"opt_usar_simetrias={'true' if usar_simetrias else 'false'};"
-        f"opt_usar_redundantes={'true' if usar_redundantes else 'false'};"
-        f"opt_salida_pura=true;"
-    )
-    cmd = [
-        "minizinc",
-        "--solver",
-        solver,
-        "--statistics",
-        "--time-limit",
-        str(timeout_ms),
-        "-D",
-        defs,
-        str(modelo),
-        str(ruta_dzn),
-    ]
+    es_config_estandar = (estrategia == 1 and usar_simetrias and usar_redundantes)
+    ruta_modelo_tmp: Optional[Path] = None
 
-    t0 = time.perf_counter()
-    proc = subprocess.run(cmd, capture_output=True, text=True)
-    dt_wall = time.perf_counter() - t0
+    try:
+        if es_config_estandar:
+            ruta_mzn_efectiva = modelo
+        else:
+            codigo_var = construir_codigo_variante_mzn(
+                modelo_base=modelo,
+                parte=datos["parte"],
+                estrategia=estrategia,
+                usar_simetrias=usar_simetrias,
+                usar_redundantes=usar_redundantes,
+            )
+            with tempfile.NamedTemporaryFile(
+                "w", suffix=".mzn", delete=False, encoding="utf-8"
+            ) as tmp:
+                tmp.write(codigo_var)
+                ruta_modelo_tmp = Path(tmp.name)
+            ruta_mzn_efectiva = ruta_modelo_tmp
+
+        cmd = [
+            "minizinc",
+            "--solver",
+            solver,
+            "--statistics",
+            "--time-limit",
+            str(timeout_ms),
+        ]
+        if estrategia == 8:
+            cmd.append("-f")
+        cmd.extend([str(ruta_mzn_efectiva), str(ruta_dzn)])
+
+        t0 = time.perf_counter()
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+        dt_wall = time.perf_counter() - t0
+    finally:
+        if ruta_modelo_tmp is not None:
+            ruta_modelo_tmp.unlink(missing_ok=True)
 
     if proc.returncode != 0 and not proc.stdout.strip():
         raise RuntimeError(f"Error al ejecutar MiniZinc:\n{proc.stderr}")
 
-    optimo_probado = "==========" in proc.stdout
-    insatisfactible = "=====UNSATISFIABLE=====" in proc.stdout
+    optimo_probado = bool(re.search(r"(?m)^==========\s*$", proc.stdout))
+    insatisfactible = bool(re.search(r"(?m)^=====UNSATISFIABLE=====\s*$", proc.stdout))
     if insatisfactible:
         raise RuntimeError(f"La instancia {ruta_dzn.name} resulto insatisfactible.")
 
+    m = datos["num_escenas"]
+    esperados = m + (2 if datos["parte"] == 2 else 1)
+
     stats: Dict[str, Any] = {}
-    lineas_solucion: List[str] = []
+    lineas_normalizadas_sol: List[List[int]] = []
+    patron_enteros = re.compile(r"^\d+(?:\s+\d+)+$")
+
     for ln in proc.stdout.splitlines():
         s = ln.strip()
         if not s:
@@ -296,19 +390,17 @@ def ejecutar_minizinc(
             if "=" in kv:
                 k, v = kv.split("=", 1)
                 stats[k.strip()] = v.strip()
-        elif s.startswith("%") or s.startswith("---") or s.startswith("==="):
-            continue
-        else:
-            lineas_solucion.append(s)
+        elif patron_enteros.match(s):
+            toks = [int(tok) for tok in s.split()]
+            if len(toks) == esperados:
+                lineas_normalizadas_sol.append(toks)
 
-    if not lineas_solucion:
+    if not lineas_normalizadas_sol:
         raise RuntimeError(
             f"MiniZinc no produjo solucion dentro del limite ({timeout_ms} ms).\n{proc.stdout}"
         )
 
-    ultima_linea = lineas_solucion[-1]
-    enteros = [int(tok) for tok in ultima_linea.split()]
-    m = datos["num_escenas"]
+    enteros = lineas_normalizadas_sol[-1]
     orden = enteros[:m]
     costo_mzn = enteros[m]
     tc_mzn = enteros[m + 1] if datos["parte"] == 2 else 0
@@ -799,6 +891,7 @@ def main() -> int:
     )
     parser.add_argument("--entrada", type=str, help="Ruta de un archivo .dzn a resolver en modo CLI.")
     parser.add_argument("--salida", type=str, help="Ruta del archivo .txt de salida normalizada.")
+    parser.add_argument("--parte", type=int, choices=[1, 2], help="Verifica opcionalmente que la entrada corresponda a la Parte 1 o 2.")
     parser.add_argument("--lote", action="store_true", help="Resuelve todas las instancias de datos/ y genera salidas/.")
     parser.add_argument("--solver", type=str, default="chuffed", choices=["chuffed", "gecode"])
     parser.add_argument("--estrategia", type=int, default=1, choices=range(1, 9))
@@ -828,6 +921,10 @@ def main() -> int:
     if args.entrada:
         ruta_in = Path(args.entrada)
         datos = parsear_archivo_dzn(ruta_in)
+        if args.parte is not None and datos["parte"] != args.parte:
+            raise ValueError(
+                f"El archivo {ruta_in.name} pertenece a la Parte {datos['parte']}, pero se indico --parte {args.parte}."
+            )
         ruta_out = (
             Path(args.salida)
             if args.salida
