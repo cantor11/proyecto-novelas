@@ -107,8 +107,8 @@ constraint assert(
 
 array[ACTORES] of int: dur_max_actor = [
     if num_esc_actor[a] == 0 then 0
-    elseif disp_actor[a] > 0 then min(D_total, disp_actor[a])
-    else D_total endif
+    else if disp_actor[a] > 0 then min(D_total, disp_actor[a])
+    else D_total endif endif
     | a in ACTORES
 ];
 
@@ -372,9 +372,9 @@ output
     [
         (if k == 1 then show(a) ++ "\t: " else "" endif) ++
         (if num_esc_actor[a] == 0 then "   "
-         elseif Escenas[a, fix(Orden[k])] == 1 then "[X]"
-         elseif k >= fix(primera[a]) /\ k <= fix(ultima[a]) then "[.]"
-         else "   " endif) ++
+         else if Escenas[a, fix(Orden[k])] == 1 then "[X]"
+         else if k >= fix(primera[a]) /\ k <= fix(ultima[a]) then "[.]"
+         else "   " endif endif endif) ++
         (if k == M then
             " | T=" ++ show_int(2, tiempo[a]) ++
             "/" ++ (if disp_actor[a] > 0 then show_int(3, disp_actor[a]) else "inf" endif) ++

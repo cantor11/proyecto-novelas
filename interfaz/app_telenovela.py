@@ -86,15 +86,28 @@ def parsear_archivo_dzn(ruta_dzn: Path) -> Dict[str, Any]:
     if es_parte2:
         disponibilidad = [0] * len(actores)
         filas_disp = [f.strip() for f in m_disp.group(1).split("|") if f.strip()]
+        if len(filas_disp) != len(actores):
+            raise ValueError(
+                f"Disponibilidad tiene {len(filas_disp)} filas; se esperaba una por cada actor ({len(actores)})."
+            )
+        vistos_disp = set()
         for f_txt in filas_disp:
             partes = [p.strip() for p in f_txt.split(",") if p.strip()]
+            if partes[0] not in mapa_actor or partes[0] in vistos_disp:
+                raise ValueError(f"Actor invalido o duplicado en Disponibilidad: {partes[0]}")
+            vistos_disp.add(partes[0])
+            val_disp = int(partes[1])
+            if val_disp < 0:
+                raise ValueError(f"Disponibilidad negativa no permitida para {partes[0]}: {val_disp}")
             idx_a = mapa_actor[partes[0]]
-            disponibilidad[idx_a] = int(partes[1])
+            disponibilidad[idx_a] = val_disp
 
         if m_evit and m_evit.group(1).strip():
             filas_ev = [f.strip() for f in m_evit.group(1).split("|") if f.strip()]
             for f_txt in filas_ev:
                 partes = [p.strip() for p in f_txt.split(",") if p.strip()]
+                if partes[0] == partes[1]:
+                    raise ValueError(f"Par reflexivo invalido en Evitar: {partes[0]}")
                 evitar.append((mapa_actor[partes[0]], mapa_actor[partes[1]]))
 
     return {
