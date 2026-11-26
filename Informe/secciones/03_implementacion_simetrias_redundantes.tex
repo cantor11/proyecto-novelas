@@ -65,40 +65,42 @@ Aunque las restricciones primarias definen exactamente el conjunto factible, la 
 
 \begin{enumerate}
     \item \textbf{Descomposición lineal de espera por intermediación de escenas con coeficientes constantes ($R_1$):}
-    Toda escena ajena $e \in E \setminus E_a$ aporta exactamente $d_e$ unidades al tiempo de espera del actor $a$ si y solo si se programa estrictamente entre su primera y su última aparición ($primera_a < Pos_e < ultima_a$). En consecuencia, $espera_a$ y $Costo$ satisfacen las identidades lineales con coeficientes constantes:
     \begin{align}
         \forall a \in A \text{ con } K_a > 0: \quad
         espera_a &= \sum_{e \in E \setminus E_a} d_e \cdot [\![ primera_a < Pos_e \land Pos_e < ultima_a ]\!] \label{eq:r1_espera} \\
         Costo &= C_{\text{fijo}} + \sum_{a \in A} c_a \cdot espera_a \label{eq:r1_costo}
     \end{align}
-    \emph{Justificación de poda:} Bajo una ramificación desde los extremos hacia el centro (\emph{Outside-In}), tan pronto un actor $a$ participa en una escena cercana al inicio ($primera_a \le r$) y en otra cercana al final ($ultima_a \ge M - r + 1$), cualquier escena ajena $e \notin E_a$ aún no asignada tiene su dominio restringido a $D(Pos_e) \subseteq [r+1 \dots M-r]$. La condición $primera_a < Pos_e < ultima_a$ se evalúa entonces a \emph{verdadero} por pura consistencia de cotas antes siquiera de decidir en qué posición central irá la escena $e$, sumando instantáneamente $+c_a d_e$ a la cota inferior $\underline{Costo}$ y disparando la poda de \emph{Branch-and-Bound}. Recíprocamente, en la Parte 2, cuando la holgura restante $U^{(2)}_a - D^{\min}_a$ es menor que $d_e$, el propagador lineal fuerza el literal a \emph{falso}, obligando a ubicar la escena pesada $e$ fuera del rango $[primera_a, ultima_a]$.
+    \emph{Redundancia semántica ($\mathcal{C}_{\text{base}} \models R_1$):} Por $C_1$--$C_3$, el tramo posicional desde $primera_a$ hasta $ultima_a$ contiene todas las escenas de $E_a$ (cuya duración suma exactamente $D^{\min}_a$) más aquellas escenas ajenas $e \in E \setminus E_a$ cuya posición verifica $primera_a < Pos_e < ultima_a$ (dado que en los extremos $primera_a$ y $ultima_a$ actúan escenas propias de $E_a$). Al restar $D^{\min}_a$ de $tiempo_a = \sum_{k=primera_a}^{ultima_a} d_{Orden_k}$ se obtiene idénticamente \eqref{eq:r1_espera}, y al multiplicar por $c_a$ y sumar sobre $A$ resulta \eqref{eq:r1_costo}.\par
+    \emph{Justificación operativa de poda:} Bajo ramificación desde los extremos hacia el centro (\emph{Outside-In}), tan pronto un actor $a$ participa en una escena cercana al inicio ($primera_a \le r$) y en otra cercana al final ($ultima_a \ge M - r + 1$), toda escena ajena $e \notin E_a$ aún libre queda restringida a $D(Pos_e) \subseteq [r+1 \dots M-r]$. La condición $primera_a < Pos_e < ultima_a$ se reduce entonces a \emph{verdadero} por consistencia de cotas (Capítulo 6 de Apt) antes de decidir en qué posición central irá $e$, sumando de inmediato $+c_a d_e$ a la cota inferior $\underline{Costo}$ y activando la poda de \emph{Branch-and-Bound}. Recíprocamente, en la Parte 2, cuando la holgura disponible $U^{(2)}_a - D^{\min}_a$ es menor que $d_e$, el propagador lineal fuerza el literal a \emph{falso}, desplazando la escena $e$ fuera del tramo entre $primera_a$ y $ultima_a$.
 
     \item \textbf{Acotamiento combinatorio de diferencias temporales entre subintervalos de turnos ($R_2$):}
-    Mientras que las cotas desde el origen $k_1 = 0$ definen el dominio unario inicial $D(Acum_k)$ en \eqref{eq:dom_acum}, para todo par de posiciones intermedias $1 \le k_1 < k_2 \le M - 1$ la diferencia $Acum_{k_2} - Acum_{k_1}$ suma exactamente $k_2 - k_1$ escenas distintas de $E$, por lo cual debe satisfacer la restricción relacional binaria:
     \begin{equation}
         \forall k_1, k_2 \in \{1, \dots, M-1\} \text{ con } k_1 < k_2: \quad
         \sum_{j=1}^{k_2 - k_1} d^{\uparrow}_j \le Acum_{k_2} - Acum_{k_1} \le \sum_{j=M-(k_2 - k_1)+1}^{M} d^{\uparrow}_j
         \label{eq:r2_subintervalos}
     \end{equation}
-    \emph{Justificación de poda:} Sin $R_2$, la recurrencia paso a paso $C_2$ propaga sobre un tramo no asignado de longitud $\Delta k = k_2 - k_1$ únicamente la cota débil $\Delta k \cdot d^{\uparrow}_1 \le Acum_{k_2} - Acum_{k_1} \le \Delta k \cdot d^{\uparrow}_M$, como si la escena más breve o más larga pudiese repetirse $\Delta k$ veces. La desigualdad \eqref{eq:r2_subintervalos} proyecta la condición de \emph{todas diferentes} sobre las duraciones de cualquier subintervalo $[k_1, k_2]$, acoplando estrechamente $ini_a$ y $fin_a$.
+    \emph{Redundancia semántica ($\mathcal{C}_{\text{base}} \models R_2$):} Por $C_1$ y $C_2$, $Acum_{k_2} - Acum_{k_1} = \sum_{k = k_1 + 1}^{k_2} d_{Orden_k}$ es la suma de duraciones de un subconjunto de $\Delta k = k_2 - k_1$ escenas dos a dos distintas de $E$; ningún subconjunto de cardinalidad $\Delta k$ puede sumar menos que las $\Delta k$ menores componentes de $d^{\uparrow}$ ni más que las $\Delta k$ mayores.
+    \emph{Justificación operativa de poda:} Sin $R_2$, la recurrencia local $C_2$ propaga sobre un tramo libre de longitud $\Delta k$ únicamente la cota débil $\Delta k \cdot d^{\uparrow}_1 \le Acum_{k_2} - Acum_{k_1} \le \Delta k \cdot d^{\uparrow}_M$, como si una misma escena mínima o máxima pudiese repetirse $\Delta k$ veces. La desigualdad \eqref{eq:r2_subintervalos} proyecta globalmente la unicidad de las escenas sobre cualquier subintervalo $[k_1, k_2]$, estrechando las cotas de $ini_a$ y $fin_a$.
 
     \item \textbf{Cotas cardinales inferiores y superiores de amplitud posicional ($R_3$):}
-    En un intervalo $[primera_a .. ultima_a]$ caben $ultima_a - primera_a + 1$ escenas, de las cuales exactamente $K_a$ pertenecen a $E_a$ y las restantes $(ultima_a - primera_a + 1 - K_a)$ pertenecen a $E \setminus E_a$. Ordenando ascendentemente las duraciones de $E \setminus E_a$ como $d^{\uparrow}_{\bar{a}, 1} \le \dots \le d^{\uparrow}_{\bar{a}, M - K_a}$ y definiendo el número máximo admisible de escenas intermedias $W^{\max}_a = |\{q \in \{1,\dots,M-K_a\} \mid \sum_{j=1}^q d^{\uparrow}_{\bar{a}, j} \le U^{(2)}_a - D^{\min}_a\}|$, se cumple necesariamente:
+    Ordenando ascendentemente las duraciones de $E \setminus E_a$ como $d^{\uparrow}_{\bar{a}, 1} \le \dots \le d^{\uparrow}_{\bar{a}, M - K_a}$ y definiendo el máximo número admisible de escenas intermedias $W^{\max}_a = |\{q \in \{1,\dots,M-K_a\} \mid \sum_{j=1}^q d^{\uparrow}_{\bar{a}, j} \le U^{(2)}_a - D^{\min}_a\}|$:
     \begin{equation}
         \forall a \in A \text{ con } K_a > 0: \quad
         K_a - 1 \le ultima_a - primera_a \le K_a + W^{\max}_a - 1
         \label{eq:r3_amplitud}
     \end{equation}
-    \emph{Justificación de poda:} Traduce directamente las cotas temporales de \texttt{Disponibilidad} al espacio discreto de posiciones $Pos_e$. En \texttt{Desenfreno4.dzn}, para el Actor 7 ($K_7 = 4$, $Disp_7 - D^{\min}_7 = 0 \implies W^{\max}_7 = 0$), la ecuación \eqref{eq:r3_amplitud} fija en el nodo raíz $ultima_7 - primera_7 = 3$, restringiendo de inmediato sus cuatro escenas $\{5, 7, 8, 15\}$ a ocupar cuatro turnos estrictamente consecutivos.
+    \emph{Redundancia semántica ($\mathcal{C}_{\text{base}} \models R_3$):} Por principio del palomar sobre la biyección $C_1$, alojar las $K_a$ escenas propias de $E_a$ exige al menos $K_a$ turnos ($ultima_a - primera_a + 1 \ge K_a$); recíprocamente, si hubiese $q > W^{\max}_a$ escenas ajenas intercaladas, su duración sumaría al menos $\sum_{j=1}^q d^{\uparrow}_{\bar{a}, j} > U^{(2)}_a - D^{\min}_a$, violando $tiempo_a \le U^{(2)}_a$ ($C_4$).
+    \emph{Justificación operativa de poda:} Traduce directamente las cotas temporales de disponibilidad al espacio discreto de posiciones $Pos_e$. En \nolinkurl{Desenfreno4.dzn}, para el Actor 7 ($K_7 = 4$, $Disp_7 - D^{\min}_7 = 0 \implies W^{\max}_7 = 0$), la ecuación \eqref{eq:r3_amplitud} fija en la raíz $ultima_7 - primera_7 = 3$, confinando sus cuatro escenas $\{5, 7, 8, 15\}$ a cuatro turnos estrictamente contiguos sin ramificar.
 
     \item \textbf{Cota inferior de espera por exceso posicional mediante \texttt{element} ($R_4$):}
-    Sea $P_{\bar{a}}[q] = \sum_{j=1}^q d^{\uparrow}_{\bar{a}, j}$ para $q \in \{0, \dots, M - K_a\}$. Dado que cualquier exceso de $q = (ultima_a - primera_a + 1 - K_a)$ posiciones dentro del intervalo $[primera_a .. ultima_a]$ debe llenarse con $q$ escenas ajenas de $E \setminus E_a$, la espera del actor $a$ no puede ser inferior a la suma de las $q$ escenas ajenas más breves:
+    Sea $P_{\bar{a}}[q] = \sum_{j=1}^q d^{\uparrow}_{\bar{a}, j}$ para $q \in \{0, \dots, M - K_a\}$:
     \begin{equation}
         \forall a \in A \text{ con } 0 < K_a < M: \quad
         espera_a \ge P_{\bar{a}}\big[ultima_a - primera_a + 1 - K_a\big]
         \label{eq:r4_exceso}
     \end{equation}
-    \emph{Justificación de poda:} Incluso cuando aún no se sabe qué escenas específicas caerán dentro de $[primera_a .. ultima_a]$ (por lo que ningún booleano individual de $R_1$ se ha activado a $1$), basta con que la distancia $ultima_a - primera_a$ supere $K_a - 1$ para que $R_4$ eleve instantáneamente la cota inferior de $espera_a$ y de $Costo$.
+    \emph{Redundancia semántica ($\mathcal{C}_{\text{base}} \models R_4$):} Si el intervalo $[primera_a .. ultima_a]$ abarca $ultima_a - primera_a + 1 = K_a + q$ turnos, exactamente $q$ de ellos corresponden a escenas distintas de $E \setminus E_a$, cuya duración acumulada $espera_a$ es al menos la suma $P_{\bar{a}}[q]$ de las $q$ escenas ajenas más cortas.
+    \emph{Justificación operativa de poda:} Incluso cuando las escenas centrales siguen indeterminadas (por lo que ningún booleano individual de $R_1$ se ha fijado aún a $1$), cualquier separación $ultima_a - primera_a > K_a - 1$ eleva instantáneamente la cota inferior de $espera_a$ y de $Costo$ a través del propagador \texttt{element}.
 \end{enumerate}
 
 \subsection{Interfaz Gráfica y Normalizada de Entrada/Salida}

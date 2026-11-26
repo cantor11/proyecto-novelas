@@ -2,33 +2,40 @@
 \section{Pruebas y Análisis Experimental}
 \label{sec:pruebas}
 
-Con el propósito de validar rigurosamente la corrección matemática, la escalabilidad combinatoria y el impacto individual de cada componente algorítmico en la Parte 1 y en la Parte 2, se construyó una batería sistemática de trece instancias (\nolinkurl{datos/parte1/} y \nolinkurl{datos/parte2/}) junto con una suite automatizada de seis pruebas integrales en Python (\nolinkurl{pruebas/test_telenovela.py}). Todos los experimentos se ejecutaron bajo condiciones idénticas sobre \texttt{MiniZinc} empleando dos motores de naturaleza algorítmica complementaria: \texttt{Gecode 6.4.0} (propagación clásica sobre dominios finitos con búsqueda \emph{Branch-and-Bound} determinista) y \texttt{Chuffed 0.14.0} (motor híbrido con generación perezosa de cláusulas, \emph{Lazy Clause Generation}, y aprendizaje de cláusulas \emph{nogood}). Adicionalmente, cada valor óptimo fue contrastado contra un oráculo exacto independiente implementado en Python mediante Programación Dinámica sobre máscaras de bits ($\mathcal{O}(M \cdot 2^M)$ de Held-Karp) para la Parte 1 y ramificación acotada con heurística admisible exacta para la Parte 2, además de una auditoría estática que verifica la ausencia total de constructos ajenos a los fundamentos del curso.
+Con el propósito de validar rigurosamente la corrección matemática, la escalabilidad combinatoria y el impacto individual de cada componente algorítmico en la Parte 1 y en la Parte 2, se construyó una batería sistemática de trece instancias (\nolinkurl{datos/parte1/} y \nolinkurl{datos/parte2/}) junto con una suite automatizada de siete pruebas integrales en Python (\nolinkurl{pruebas/test_telenovela.py}). Todos los experimentos se ejecutaron bajo condiciones idénticas sobre \texttt{MiniZinc} empleando dos motores de naturaleza algorítmica complementaria: \texttt{Gecode 6.4.0} (propagación clásica sobre dominios finitos con búsqueda \emph{Branch-and-Bound} determinista) y \texttt{Chuffed 0.14.0} (motor híbrido con generación perezosa de cláusulas, \emph{Lazy Clause Generation}, y aprendizaje de cláusulas \emph{nogood}). Adicionalmente, la suite contrasta cada óptimo contra un oráculo exacto independiente (Programación Dinámica $\mathcal{O}(M \cdot 2^M)$ de Held-Karp en Parte 1 y ramificación acotada con heurística admisible exacta en Parte 2), comprueba programáticamente la recuperación algebraica completa de las órbitas simétricas descartadas ($S_1 \times S_2 \times S_3$), valida enumeraciones \texttt{ACTORES} con nombres arbitrarios y filas de \texttt{Disponibilidad} permutadas, y audita estáticamente que los archivos \texttt{.mzn} no empleen constructos ajenos a los fundamentos del curso.
 
-\subsection{Diseño de la Batería de Pruebas}
+\subsection{Diseño Sistemático de la Batería de 13 Instancias}
 
-La batería de trece escenarios progresivos cubre desde instancias pedagógicas trazables a mano hasta el problema completo ``Desenfreno de Pasiones'' ($20! \approx 2{,}43 \times 10^{18}$ permutaciones):
+El Cuadro~\ref{tab:diseno_bateria} sintetiza la configuración paramétrica de los trece archivos \texttt{.dzn}, abarcando progresivamente desde instancias base de verificación manual ($M=6$) hasta ``Desenfreno de Pasiones'' ($M=20$, $20! \approx 2{,}43 \times 10^{18}$ permutaciones):
 
-\begin{itemize}
-    \item \textbf{Instancias de la Parte 1 (7 archivos en \nolinkurl{datos/parte1/}):}
-    \begin{itemize}
-        \item \texttt{Trivial1.dzn} ($N=3, M=6, D_{\text{total}}=12$, oficial): Incluye una escena sin actores ($e=1$) y un par de escenas gemelas ($\{3,4\}$), permitiendo alcanzar costo de espera nulo ($Costo^* = C_{\text{fijo}} = 255$).
-        \item \texttt{Instancia01\_P1.dzn} ($N=5, M=8, D_{\text{total}}=13$): Incorpora simultáneamente dos escenas vacías ($e \in \{2,7\}$) y dos clases de escenas gemelas ($\{3,5\}$ y $\{4,6\}$) para estresar conjuntamente las simetrías $S_1$, $S_2$ y $S_3$.
-        \item \texttt{Instancia02\_P1.dzn} ($N=6, M=10, D_{\text{total}}=18$): Presenta fuerte asimetría tarifaria con una estrella principal de costo $c_6 = 60$ frente a reparto secundario ($c_1..c_5 \in [4,8]$).
-        \item \texttt{Instancia03\_P1.dzn} ($N=7, M=12, D_{\text{total}}=27$): Grafo denso de co-actuación con duraciones muy heterogéneas ($d_e \in \{1,\dots,5\}$), diseñado para evaluar las cotas de subintervalos y exceso posicional ($R_2$--$R_4$).
-        \item \texttt{Instancia04\_P1.dzn} ($N=8, M=15, D_{\text{total}}=27$): Escenario de escala intermedia-alta ($1{,}31 \times 10^{12}$ permutaciones) resoluble a optimalidad certificada en ambos motores.
-        \item \texttt{Desenfreno2.dzn} y \texttt{Desenfreno3.dzn} ($N=8, M=20, D_{\text{total}}=27$, oficiales): Instancias completas de ``Desenfreno de Pasiones'' con tarifas $[10, 4, 5, 5, 5, 40, 4, 20]$ y piso base $C_{\text{fijo}} = 725$.
-    \end{itemize}
-
-    \item \textbf{Instancias de la Parte 2 (6 archivos en \nolinkurl{datos/parte2/}):}
-    \begin{itemize}
-        \item \texttt{Trivial2.dzn} ($N=4, M=6, |P_{\text{ev}}|=2$, oficial): Topes ajustados $Disp = [5, 8, 0, 10]$ y conflictos $(\text{Actor1},\text{Actor2})$ y $(\text{Actor2},\text{Actor3})$, con óptimo $(Costo^*, TC^*) = (450, 6)$.
-        \item \texttt{Instancia01\_P2.dzn} ($N=5, M=8, |P_{\text{ev}}|=3$): Escenario con múltiples permutaciones de igual costo mínimo ($225$), diseñado para comprobar que la función $ObjetivoLex$ selecciona aquella que minimiza estrictamente el tiempo compartido ($TC^* = 5$).
-        \item \texttt{Instancia02\_P2.dzn} ($N=6, M=10, |P_{\text{ev}}|=3$): Impone holgura nula ($Disp_6 = D^{\min}_6 = 9$) al actor más costoso junto con tres pares conflictivos, además de validar el caso borde \texttt{Evitar} vacío en la suite unitaria.
-        \item \texttt{Instancia03\_P2.dzn} ($N=7, M=12, |P_{\text{ev}}|=4$): Restringe la disponibilidad del Actor 3 a $17$ unidades (inferior a las $22$ unidades que empleaba en el óptimo de la Parte 1), cuantificando el sobrecosto inducido por restricciones contractuales ($1531 \to 1544$).
-        \item \texttt{Instancia04\_P2.dzn} ($N=8, M=15, |P_{\text{ev}}|=5$): Escenario de 15 escenas con cuatro disponibilidades acotadas y cinco pares en \texttt{Evitar}.
-        \item \texttt{Desenfreno4.dzn} ($N=8, M=20, |P_{\text{ev}}|=4$, oficial): Extensión completa de ``Desenfreno de Pasiones'' con $Disp = [0, 0, 23, 0, 80, 10, 5, 100]$ y cuatro pares conflictivos entre los Actores 1, 2, 3 y 4.
-    \end{itemize}
-\end{itemize}
+\begin{table}[H]
+\centering
+\caption{Caracterización estructural de las 13 instancias de prueba en \nolinkurl{datos/parte1/} y \nolinkurl{datos/parte2/}.}
+\label{tab:diseno_bateria}
+\resizebox{\textwidth}{!}{%
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{llcccccl}
+\toprule
+\textbf{Archivo \texttt{.dzn}} & \textbf{Parte} & $N$ & $M$ & $D_{\text{tot}}$ & \textbf{Simetrías activas} & \textbf{Restricciones P2} & \textbf{Fenómeno estructural evaluado} \\
+\midrule
+\texttt{Trivial1.dzn}        & P1 (Oficial) & 3 &  6 & 12 & $S_1, S_2=\{3,4\}, S_3=\{1\}$           & ---                     & Caso base sin espera ($Costo^* = C_{\text{fijo}} = 255$) \\
+\texttt{Instancia01\_P1.dzn} & P1           & 5 &  8 & 13 & $S_1, S_2=\{3,5\},\{4,6\}, S_3=\{2,7\}$ & ---                     & Órbita simétrica de $48$ óptimos equivalentes \\
+\texttt{Instancia02\_P1.dzn} & P1           & 6 & 10 & 18 & $S_1$                                   & ---                     & Estrella dominante ($c_6 = 60$ vs.\ $c_1..c_5 \le 8$) \\
+\texttt{Instancia03\_P1.dzn} & P1           & 7 & 12 & 27 & $S_1$                                   & ---                     & Duraciones heterogéneas $d_e \in \{1..5\}$ ($R_2$--$R_4$) \\
+\texttt{Instancia04\_P1.dzn} & P1           & 8 & 15 & 27 & $S_1$                                   & ---                     & Escala intermedia-alta ($1{,}31 \times 10^{12}$ estados) \\
+\texttt{Desenfreno2.dzn}     & P1 (Oficial) & 8 & 20 & 27 & $S_1$                                   & ---                     & Telenovela completa ``Desenfreno de Pasiones'' \\
+\texttt{Desenfreno3.dzn}     & P1 (Oficial) & 8 & 20 & 27 & $S_1$                                   & ---                     & Réplica oficial de validación de formato E/S \\
+\midrule
+\texttt{Trivial2.dzn}        & P2 (Oficial) & 4 &  6 & 12 & $S_1, S_2=\{3,4\}$                      & 3 topes, $|P_{\text{ev}}|=2$ & Caso base con \texttt{Disponibilidad} y \texttt{Evitar} \\
+\texttt{Instancia01\_P2.dzn} & P2           & 5 &  8 & 12 & $S_1$                                   & 4 topes, $|P_{\text{ev}}|=3$ & Desempate lexicográfico estricto ($TC^* = 5$) \\
+\texttt{Instancia02\_P2.dzn} & P2           & 6 & 10 & 18 & $S_1$                                   & 4 topes, $|P_{\text{ev}}|=3$ & Holgura nula $Disp_6 = D^{\min}_6 = 9$ en estrella \\
+\texttt{Instancia03\_P2.dzn} & P2           & 7 & 12 & 27 & $S_1$                                   & 3 topes, $|P_{\text{ev}}|=4$ & Sobrecosto por tope contractual ($1531 \to 1544$) \\
+\texttt{Instancia04\_P2.dzn} & P2           & 8 & 15 & 27 & $S_1$                                   & 4 topes, $|P_{\text{ev}}|=5$ & Escalamiento con $5$ pares conflictivos activos \\
+\texttt{Desenfreno4.dzn}     & P2 (Oficial) & 8 & 20 & 27 & $S_1$                                   & 5 topes, $|P_{\text{ev}}|=4$ & Caso completo con $Disp_7 = 5$ ($871 \to 880$) \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
 
 \subsection{Análisis de los Modelos y Resultados Generales en Parte 1 y Parte 2}
 

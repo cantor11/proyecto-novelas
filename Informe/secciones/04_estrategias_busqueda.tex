@@ -2,7 +2,13 @@
 \section{La Búsqueda: Diseño y Sustentación de Estrategias}
 \label{sec:busqueda}
 
-En un problema de secuenciación sobre permutaciones de $M$ escenas, el tamaño del espacio combinatorio crece factorialmente como $|\mathfrak{S}_M| = M!$ (alcanzando $20! \approx 2{,}43 \times 10^{18}$ estados en ``Desenfreno de Pasiones''). Conforme a la teoría de búsqueda en $\text{COP}(\mathcal{FD})$ (Capítulo 8 de Apt) y a la literatura especializada en planificación de ensayos (Smith, 2003), la eficiencia del esquema \emph{Branch-and-Bound} (y su combinación con generación perezosa de cláusulas, \emph{Lazy Clause Generation}, en motores modernos como \texttt{Chuffed}) está gobernada por la sinergia entre el orden topológico en que se fijan las posiciones del cronograma y el criterio de selección de escenas en cada posición.
+En un problema de secuenciación sobre permutaciones de $M$ escenas, el tamaño del espacio combinatorio crece factorialmente como $|\mathfrak{S}_M| = M!$ (alcanzando $20! \approx 2{,}43 \times 10^{18}$ estados en ``Desenfreno de Pasiones''). Conforme al principio algorítmico del Capítulo 8 de Apt (\emph{Search Algorithm = Search Tree + Traversal Algorithm}) y al esquema de \emph{Branch-and-Bound} sobre dominios finitos, cada decisión binaria de ramificación divide el subproblema abierto imponiendo $x = v$ frente a $x \neq v$ bajo asignación puntual (o $x \le \lfloor (l+u)/2 \rfloor$ frente a $x > \lfloor (l+u)/2 \rfloor$ bajo bisección de intervalo), ejecutando propagación hasta punto fijo en cada nodo. Cada vez que el buscador alcanza una hoja factible con valor objetivo $Z_{\text{inc}}$, actualiza la solución incumbente e inyecta dinámicamente al almacén de restricciones la desigualdad estricta de mejora:
+\begin{equation}
+    Costo \le Costo_{\text{inc}} - 1 \quad (\text{en } \mathcal{P}_1), \qquad
+    ObjetivoLex \le ObjetivoLex_{\text{inc}} - 1 \quad (\text{en } \mathcal{P}_2)
+    \label{eq:bnb_cut_telenovela}
+\end{equation}
+podando al retroceder todo subárbol cuya cota inferior deducida por propagación supere el miembro derecho de \eqref{eq:bnb_cut_telenovela}. La eficacia de este proceso (y su sinergia con generación perezosa de cláusulas en \texttt{Chuffed}) depende críticamente del orden topológico en que se fijan los turnos y de la heurística de valor.
 
 \subsection{Definición de las Ocho Estrategias de Búsqueda Exploradas}
 
@@ -53,5 +59,12 @@ La drástica ventaja empírica de $E_1$ (y su complemento adaptativo con aprendi
     Mientras que en $E_3$ la desigualdad $Orden_{q+1} < Orden_M$ solo puede evaluarse por completo al llegar a la hoja de profundidad $M$ (cuando se instancia $Orden_M$), en $E_1$ las variables $Orden_{q+1}$ y $Orden_M$ son las dos primeras variables activas en instanciarse, podando exactamente el $50\%$ del árbol combinatorio en el segundo nivel de profundidad.
 
     \item \textbf{Alineación económica de la heurística de valor por peso salarial ascendente:}
-    En toda solución óptima de baja espera, las posiciones periféricas ($1, M, 2, M-1$) deben ocuparse con escenas de pocos actores y bajo costo salarial agregado (tales como la escena $4$ con solo el Actor 1, la escena $19$ con solo el Actor 5 o la escena $16$ con solo el Actor 6), mientras que las escenas densas donde confluyen cinco o seis actores simultáneamente (como las escenas $7$ y $8$ en ``Desenfreno de Pasiones'', con peso salarial conjunto $38$ y $48$ por unidad de tiempo) deben situarse en el centro del rodaje donde los intervalos de permanencia del elenco se cruzan naturalmente. Al ordenar los valores por $W_e$ creciente, $E_1$ descubre en las primeras ramas una solución incumbente de costo muy próximo al óptimo global ($871$ en Parte 1 y $880$ en Parte 2), maximizando el poder de poda de la cota superior $Costo < Costo_{\text{inc}}$ durante el resto de la demostración de optimalidad.
+    En toda solución óptima de baja espera, las posiciones periféricas ($1, M, 2, M-1$) deben ocuparse con escenas de pocos actores y bajo costo salarial agregado (tales como la escena $4$ con solo el Actor 1, la escena $19$ con solo el Actor 5 o la escena $16$ con solo el Actor 6), mientras que las escenas densas donde confluyen cinco o seis actores simultáneamente (como las escenas $7$ y $8$ en ``Desenfreno de Pasiones'', con peso salarial conjunto $38$ y $48$ por unidad de tiempo) deben situarse en el centro del rodaje donde los intervalos de permanencia del elenco se cruzan naturalmente. Al ordenar los valores por $W_e$ creciente, $E_1$ descubre en las primeras ramas una solución incumbente de costo muy próximo al óptimo global ($871$ en Parte 1 y $880$ en Parte 2), maximizando el poder de poda del corte dinámico \eqref{eq:bnb_cut_telenovela} durante el resto de la prueba de optimalidad (Figura~\ref{fig:arbol_bnb_trivial2}).
 \end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.99\textwidth]{parte2/arbol_bnb_trivial2.png}
+    \caption{Efecto estructural de la propagación en raíz, la ruptura de simetrías ($S_1$--$S_3$), las restricciones redundantes ($R_1$--$R_4$) y la estrategia $E_1$ sobre el árbol \emph{Branch-and-Bound}: (a) obtención del óptimo global en la primera hoja factible y corte dinámico en \nolinkurl{Trivial2.dzn}; (b) reducción simultánea de nodos explorados y fallidos en $11{,}45\times$ sobre \nolinkurl{Instancia03_P2.dzn}.}
+    \label{fig:arbol_bnb_trivial2}
+\end{figure}
