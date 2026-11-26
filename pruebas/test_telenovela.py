@@ -405,6 +405,54 @@ class TestProyectoTelenovelaCOP(unittest.TestCase):
             self.assertEqual(sal_p2.read_text(encoding="utf-8").strip(), p2.stdout.strip())
             self.assertTrue(sal_p2.read_text(encoding="utf-8").strip().endswith(" 450 6"))
 
+    def test_06_adherencia_constructos_fundamentos_y_ocho_estrategias(self) -> None:
+        import re
+
+        constructos_prohibidos = [
+            r"\bopt\s+(?:bool|int|float|set)\b",
+            r"\bdefault\b",
+            r"\benum2int\s*\(",
+            r"\bindex_set_1of2\s*\(",
+            r"\barg_sort\s*\(",
+            r"\bsort\s*\(",
+            r"\bjoin\s*\(",
+            r"\bconcat\s*\(",
+        ]
+        for modelo in (MODELO_PARTE1, MODELO_PARTE2):
+            lineas_codigo = [
+                ln.split("%", 1)[0]
+                for ln in modelo.read_text(encoding="utf-8").splitlines()
+            ]
+            sin_comentarios = "\n".join(lineas_codigo)
+            for pat in constructos_prohibidos:
+                self.assertIsNone(
+                    re.search(pat, sin_comentarios),
+                    f"Constructo ajeno a Fundamentos ({pat}) detectado en {modelo.name}",
+                )
+
+        # Invarianza del optimo global bajo las 8 estrategias E1..E8
+        for est in range(1, 9):
+            r1 = ejecutar_minizinc(
+                RAIZ / "datos" / "parte1" / "Trivial1.dzn",
+                solver="gecode",
+                estrategia=est,
+                timeout_ms=10000,
+            )
+            self.assertTrue(r1["optimo_probado"])
+            self.assertEqual(r1["evaluacion"]["costo_total"], 255)
+
+            r2 = ejecutar_minizinc(
+                RAIZ / "datos" / "parte2" / "Trivial2.dzn",
+                solver="gecode",
+                estrategia=est,
+                timeout_ms=10000,
+            )
+            self.assertTrue(r2["optimo_probado"])
+            self.assertEqual(
+                (r2["evaluacion"]["costo_total"], r2["evaluacion"]["tiempo_compartido"]),
+                (450, 6),
+            )
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
