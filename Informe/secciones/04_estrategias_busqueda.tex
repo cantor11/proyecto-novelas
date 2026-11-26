@@ -6,7 +6,7 @@ En un problema de secuenciación sobre permutaciones de $M$ escenas, el tamaño 
 
 \subsection{Definición de las Ocho Estrategias de Búsqueda Exploradas}
 
-Con el propósito de realizar una evaluación sistemática y rigurosa, ambos modelos implementan ocho estrategias de distribución parametrizadas ($E_1$--$E_8$). Sea $\sigma = (e_{(1)}, e_{(2)}, \dots, e_{(M)})$ la ordenación estática de las escenas según su \emph{peso salarial actoral ascendente} $W_e = \sum_{a \in A : p_{a,e}=1} c_a$ (desempatando por menor índice $e$), y sea $R_k = OrdenRango_k \in \{1,\dots,M\}$ el rango de la escena $Orden_k$ dentro de $\sigma$. Asimismo, defínanse el vector intercalado \emph{Outside-In} (de los extremos hacia el centro) y su homólogo reindexado por peso salarial:
+Con el propósito de realizar una evaluación sistemática y rigurosa sin sobrecargar los modelos entregados con variables muertas, ambos archivos \texttt{.mzn} canalizan para la estrategia principal únicamente la vista reindexada $R_k = OrdenRango_k \in \{1,\dots,M\}$ que asocia a cada turno $k \in K$ el rango estático $r \in \{1,\dots,M\}$ de la escena $Orden_k$ según su \emph{peso salarial actoral ascendente} $W_e = \sum_{a \in A : p_{a,e}=1} c_a$ (desempatando estrictamente por menor índice $e$), y documentan las siete variantes adicionales ($E_2$--$E_8$) evaluadas mediante el arnés experimental. Defínanse el vector intercalado \emph{Outside-In} (de los extremos hacia el centro) y su homólogo reindexado por peso salarial:
 \begin{align}
     \vec{z}_{\text{ext}} &= \big(Orden_1,\; Orden_M,\; Orden_2,\; Orden_{M-1},\; \dots,\; Orden_{\lceil (M+1)/2 \rceil}\big) \label{eq:vec_outside_in} \\
     \vec{r}_{\text{ext}} &= \big(R_1,\; R_M,\; R_2,\; R_{M-1},\; \dots,\; R_{\lceil (M+1)/2 \rceil}\big) \nonumber

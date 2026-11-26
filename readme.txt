@@ -21,9 +21,11 @@ Profesor:
       TelenovelaParte1.mzn      Modelo COP en MiniZinc para la Parte 1:
                                 minimizacion del costo salarial total de los
                                 actores segun su tiempo de permanencia en el
-                                estudio, con canalizacion inverse(Orden, Pos),
-                                eliminacion de simetrias (S1-S3), restricciones
-                                redundantes (R1-R4) y 8 estrategias (E1-E8).
+                                estudio, construido estrictamente sobre los
+                                fundamentos del curso con canalizacion
+                                inverse(Orden, Pos), eliminacion de simetrias
+                                (S1-S3), restricciones redundantes (R1-R4) y
+                                estrategia Outside-In por peso salarial (E1).
     parte2/
       TelenovelaParte2.mzn      Modelo COP extendido en MiniZinc para la Parte 2:
                                 incorpora restricciones de Disponibilidad maxima
@@ -102,20 +104,13 @@ A) Ejecucion directa en MiniZinc CLI (MiniZinc 2.9+):
      minizinc --solver gecode  problemas/parte2/TelenovelaParte2.mzn datos/parte2/Trivial2.dzn
      minizinc --solver chuffed --statistics problemas/parte2/TelenovelaParte2.mzn datos/parte2/Desenfreno4.dzn
 
-   - Comparacion con y sin eliminacion de simetrias o restricciones redundantes:
-     minizinc --solver gecode --statistics -D "opt_usar_simetrias=false;" problemas/parte1/TelenovelaParte1.mzn datos/parte1/Instancia01_P1.dzn
-     minizinc --solver gecode --statistics -D "opt_usar_redundantes=false;" problemas/parte2/TelenovelaParte2.mzn datos/parte2/Instancia02_P2.dzn
-
-   - Seleccion de cualquiera de las 8 estrategias de busqueda (1..8):
-     minizinc --solver chuffed --statistics -D "opt_estrategia=1;" problemas/parte2/TelenovelaParte2.mzn datos/parte2/Desenfreno4.dzn
-
 B) Ejecucion desde MiniZinc IDE:
 
    1. Abrir problemas/parte1/TelenovelaParte1.mzn (o TelenovelaParte2.mzn).
    2. Seleccionar un archivo .dzn correspondiente de datos/parte1/ (o datos/parte2/).
    3. Elegir el solver "Chuffed" o "Gecode" y presionar "Run" (Ctrl+R).
 
-C) Interfaz grafica interactiva y generacion de archivos normalizados (.txt):
+C) Interfaz grafica interactiva, comparacion de ablacion/estrategias y salidas (.txt):
 
    - Abrir la interfaz grafica de escritorio (Tkinter):
      python interfaz/app_telenovela.py
@@ -123,6 +118,11 @@ C) Interfaz grafica interactiva y generacion de archivos normalizados (.txt):
    - Resolver un archivo .dzn y escribir su salida normalizada en texto:
      python interfaz/app_telenovela.py --entrada datos/parte1/Desenfreno2.dzn --salida salidas/parte1/Desenfreno2.txt
      python interfaz/app_telenovela.py --entrada datos/parte2/Desenfreno4.dzn --salida salidas/parte2/Desenfreno4.txt
+
+   - Ejecutar variantes de ablacion (sin simetrias / sin redundantes) o cualquiera de las 8 estrategias (1..8):
+     python interfaz/app_telenovela.py --entrada datos/parte1/Instancia01_P1.dzn --solver gecode --sin-simetrias
+     python interfaz/app_telenovela.py --entrada datos/parte2/Instancia02_P2.dzn --solver gecode --sin-redundantes
+     python interfaz/app_telenovela.py --entrada datos/parte2/Desenfreno4.dzn --solver chuffed --estrategia 1
 
    - Regenerar en lote todas las salidas normalizadas del repositorio:
      python interfaz/app_telenovela.py --lote

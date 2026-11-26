@@ -15,7 +15,7 @@ Proyecto final de la asignatura **Programación por Restricciones**, Escuela de 
 ## Estructura del Repositorio
 
 - `problemas/`: Implementaciones declarativas en MiniZinc de los Problemas de Optimización con Restricciones ($\text{COP}(\mathcal{FD})$).
-  - `parte1/TelenovelaParte1.mzn`: Modelo COP de la Parte 1 para minimizar el costo salarial total de permanencia en el set, con canalización primal-dual `inverse(Orden, Pos)`, eliminación de simetrías ($S_1$–$S_3$), restricciones redundantes ($R_1$–$R_4$) y 8 estrategias de búsqueda parametrizadas ($E_1$–$E_8$).
+  - `parte1/TelenovelaParte1.mzn`: Modelo COP de la Parte 1 construido estrictamente sobre los constructos de los fundamentos del curso para minimizar el costo salarial total de permanencia en el set, con canalización primal-dual `inverse(Orden, Pos)`, eliminación de simetrías ($S_1$–$S_3$), restricciones redundantes ($R_1$–$R_4$) y estrategia *Outside-In* ponderada por peso salarial ($E_1$).
   - `parte2/TelenovelaParte2.mzn`: Extensión COP de la Parte 2 con restricciones contractuales de `Disponibilidad`, cuantificación exacta de solape en estudio para pares conflictivos (`Evitar`) y función objetivo lexicográfica exacta ($Z_{\text{lex}} = W \cdot \text{Costo} + \text{TiempoCompartido}$).
 - `datos/`: Batería de 13 archivos de entrada normalizados (`*.dzn`).
   - `parte1/`: `Trivial1.dzn`, `Instancia01_P1.dzn`..`Instancia04_P1.dzn`, `Desenfreno2.dzn` y `Desenfreno3.dzn` ($M \in \{6, 8, 10, 12, 15, 20\}$).

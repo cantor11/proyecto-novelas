@@ -93,3 +93,6 @@ Sean $\pi_1$ y $\pi_2$ dos cronogramas factibles cualesquiera en $\mathcal{C}_2$
     \]
 \end{itemize}
 Queda así demostrado que minimizar \eqref{eq:obj_lex} en una única ejecución de MiniZinc halla exactamente el óptimo lexicográfico $(Costo^*, TC^*)$, evitando además cualquier desbordamiento entero de 32 bits gracias a la cota ajustada $W = \overline{TC} + 1$ (en \texttt{Desenfreno4.dzn}, $\overline{TC} = 100 \implies W = 101$ y $ObjetivoLex^* = 101 \times 880 + 37 = 88\,917 \ll 2^{31}-1$).
+
+\paragraph{Anotación de búsqueda del modelo extendido.}
+De manera homóloga a $\mathcal{P}_1$, el modelo $\mathcal{P}_2$ aplica como estrategia principal ($E_1$) la distribución completa \emph{Outside-In} ponderada por rango salarial ascendente para minimizar el criterio compuesto $ObjetivoLex$. Al fijar simétricamente los turnos periféricos antes que el bloque central, cierra desde los primeros niveles los extremos actorales $primera_a$ y $ultima_a$, activando tempranamente tanto las cotas de disponibilidad máxima ($C_4$) como las cotas de convivencia ($C_5$).

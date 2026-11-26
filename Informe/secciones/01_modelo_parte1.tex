@@ -93,11 +93,12 @@ Atendiendo rigurosamente al principio de separación entre parámetros conocidos
 El conjunto de restricciones primarias $\mathcal{C}_1 = \{C_1, C_2, C_3\}$ se expresa en forma matemática declarativa pura, sin emplear condicionales dependientes de variables de decisión:
 
 \begin{enumerate}
-    \item \textbf{Biyección de permutación entre turnos y escenas ($C_1$):} Cada escena debe ensayarse exactamente una vez y en cada posición del plan se graba una única escena, vinculando primal y dualmente los arreglos $Orden$ y $Pos$ como permutaciones inversas mutuas:
-    \begin{equation}
-        \forall k \in K, \; \forall e \in E: \quad (Orden_k = e) \iff (Pos_e = k)
+    \item \textbf{Biyección de permutación entre turnos y escenas ($C_1$):} Cada escena debe ensayarse exactamente una vez y en cada posición del plan se graba una única escena, vinculando primal y dualmente los arreglos $Orden$ y $Pos$ como biyecciones inversas mutuas sin condicionar sobre valores individuales:
+    \begin{align}
+        \forall j, k \in K \text{ con } j < k:\quad & Orden_j \neq Orden_k \nonumber \\
+        \forall k \in K:\; Pos_{Orden_k} = k, \qquad & \forall e \in E:\; Orden_{Pos_e} = e
         \label{eq:c1_inverse}
-    \end{equation}
+    \end{align}
     \emph{Semántica intuitiva:} Garantiza simultáneamente que ninguna escena se omita ni se repita, y permite consultar en tiempo constante tanto qué escena ocupa el turno $k$ como en qué turno se graba la escena $e$.
 
     \item \textbf{Continuidad cronológica acumulada del rodaje ($C_2$):} El tiempo acumulado inicia en cero antes del primer turno y se incrementa exactamente en la duración de la escena asignada a cada posición sucesiva hasta completar $D_{\text{total}}$:
@@ -132,3 +133,6 @@ La función objetivo $f_1$ minimiza el costo salarial total abonado al elenco po
 
 \paragraph{Justificación de adecuación al problema planteado.}
 La formulación $\mathcal{P}_1$ es exacta y estructuralmente idónea por tres razones matemáticas fundamentales: (i) para cualquier orden de rodaje $\pi = (Orden_1, \dots, Orden_M)$, la identidad telescópica $Acum_{ultima_a} - Acum_{primera_a - 1} = \sum_{k=primera_a}^{ultima_a} (Acum_k - Acum_{k-1}) = \sum_{k=primera_a}^{ultima_a} d_{\pi_k}$ reproduce sin error la regla de liquidación del enunciado (por ejemplo, en el orden identidad $\pi = (1,\dots,20)$ de ``Desenfreno de Pasiones'', para el Actor 3 se obtiene $primera_3 = 2$, $ultima_3 = 15$, $tiempo_3 = Acum_{15} - Acum_1 = 21 - 2 = 19$ y costo $19 \times 5 = 95$); (ii) al calcular $primera_a$ y $ultima_a$ directamente sobre el conjunto estático $E_a$ mediante $Pos_e$, se prescinde por completo de matrices booleanas reificadas para detectar el inicio y fin de cada actor; y (iii) la descomposición lineal $tiempo_a = D^{\min}_a + espera_a$ aísla explícitamente la componente variable de ineficiencia operativa ($espera_a$).
+
+\paragraph{Anotación de búsqueda del modelo.}
+Para completar la especificación operativa de $\mathcal{P}_1$, la resolución aplica una búsqueda completa \emph{Branch-and-Bound} sobre la secuencia intercalada desde los extremos hacia el centro (\emph{Outside-In}: turnos $1, M, 2, M-1, \dots$) seleccionando las variables en orden de dicho intercalado y asignando en cada turno la escena disponible de menor peso salarial actoral acumulado ($E_1$, sustentada teóricamente y comparada frente a otras siete estrategias en la Sección~\ref{sec:busqueda}).
