@@ -1,0 +1,78 @@
+% !TEX root = ./main.tex
+\documentclass[11pt,a4paper]{article}
+
+% --- Paquetes básicos ---
+\usepackage[utf8]{inputenc}
+\usepackage[spanish,es-tabla]{babel}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath, amsfonts, amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{xcolor}
+\usepackage{float}
+
+% Ruta raíz de imágenes
+\graphicspath{{Imagenes/}}
+
+% --- Configuración de enlaces ---
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+    citecolor=blue,
+    hypertexnames=false,
+}
+
+\begin{document}
+\pagenumbering{roman}
+
+% --- Portada ---
+\begin{titlepage}
+    \centering
+    \includegraphics[width=0.22\textwidth]{logoUV.jpg}\par\vspace{0.8cm}
+    {\scshape\LARGE Universidad del Valle \par}
+    \vspace{0.3cm}
+    {\scshape\Large Escuela de Ingeniería de Sistemas y Computación \par}
+    \vspace{0.3cm}
+    {\scshape\large Programación por Restricciones \par}
+    \vspace{1.2cm}
+    {\huge\bfseries Proyecto de Curso: Planificación de los Ensayos en una Telenovela (COP) \par}
+    \vspace{1.2cm}
+    {\Large\textbf{Integrantes:}\par}
+    \vspace{0.4cm}
+    {\large
+    Cristian David Cabrera Pantoja\\
+    Junior Orlando Cantor Arevalo\\
+    Juan Diego Cárdenas Mejía\par}
+    \vfill
+    {\large \textbf{Profesor:} Robinson Duque \par}
+    \vspace{0.8cm}
+    {\large Cali, Colombia \\ \today \par}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+\pagenumbering{arabic}
+
+% --- Secciones modulares del informe ---
+\input{secciones/01_modelo_parte1}
+\newpage
+
+\input{secciones/02_modelo_parte2}
+\newpage
+
+\input{secciones/03_implementacion_simetrias_redundantes}
+\newpage
+
+\input{secciones/04_estrategias_busqueda}
+\newpage
+
+\input{secciones/05_pruebas_y_analisis}
+\newpage
+
+\input{secciones/06_conclusiones}
+
+\end{document}

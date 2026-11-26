@@ -1,0 +1,95 @@
+% !TEX root = ../main.tex
+\section{Parte 2: Extensión con Disponibilidad, Conflictos (\texttt{Evitar}) y Prioridad Jerárquica}
+\label{sec:modelo_parte2}
+
+La segunda parte del proyecto extiende el problema $\mathcal{P}_1$ hacia un escenario realista de producción televisiva $\mathcal{P}_2 = \langle \mathcal{X}_2, \mathcal{D}_2, \mathcal{C}_2, f_2 \rangle$ en el que concurren dos fenómenos operativos adicionales: (1) actores principales o estrellas que imponen por contrato un tope máximo estricto de unidades de tiempo de permanencia en el estudio, y (2) pares de actores con roces interpersonales cuya coincidencia simultánea dentro del estudio se desea reducir al mínimo posible, respetando estrictamente la prioridad jerárquica de minimizar primero el costo económico de la grabación.
+
+\subsection{Parámetros Adicionales de Entrada y Dominios Ajustados}
+
+Además de los parámetros $A$, $p_{a,e}$, $c_a$ y $d_e$ de la Parte 1, la entrada normalizada de la Parte 2 incorpora dos estructuras relacionales:
+
+\begin{itemize}
+    \item \textbf{Disponibilidad máxima por actor (\texttt{Disponibilidad}):} Tabla de $N$ filas de pares $(\text{actor}, \text{límite})$, de la cual se extrae por correspondencia exacta sobre la enumeración $A$ el parámetro $Disp_a \in \mathbb{Z}_{\ge 0}$ para cada $a \in A$ (independientemente del orden en que se listen las filas en el archivo \texttt{.dzn}). Conforme a la especificación, $Disp_a = 0$ denota disponibilidad ilimitada, mientras que $Disp_a > 0$ impone un techo máximo de permanencia en el estudio. Esto refina a priori la cota superior del dominio de permanencia $U^{(2)}_a$ de cada actor desde el nodo raíz:
+    \begin{equation}
+        U^{(2)}_a = \begin{cases}
+            0, & \text{si } K_a = 0 \\
+            \min(D_{\text{total}}, Disp_a), & \text{si } K_a > 0 \land Disp_a > 0 \\
+            D_{\text{total}}, & \text{si } K_a > 0 \land Disp_a = 0
+        \end{cases}
+        \label{eq:u2_actor}
+    \end{equation}
+    En consecuencia, si para algún actor con $Disp_a > 0$ se tuviese $D^{\min}_a > Disp_a$, el problema sería intrínsecamente infactible incluso sin esperas, condición verificada de forma inmediata mediante una aserción estática previa a la búsqueda. En particular, cuando $Disp_a = D^{\min}_a$ (como ocurre con el Actor 7 en \texttt{Desenfreno4.dzn}, donde $D^{\min}_7 = 5 = Disp_7$), el dominio inicial colapsa directamente a $D(tiempo_7) = \{5\}$ y $D(espera_7) = \{0\}$ antes de realizar cualquier ramificación.
+
+    \item \textbf{Pares de convivencia no deseada (\texttt{Evitar}):} Arreglo bidimensional de longitud variable $P_{\text{ev}} = \{1, 2, \dots, L\}$ ($L \ge 0$, admitiendo incluso el caso vacío $L = 0$), donde cada fila $p \in P_{\text{ev}}$ define un par de actores distintos $(a_{p,1}, a_{p,2}) \in A \times A$ con $a_{p,1} \neq a_{p,2}$ que prefieren evitar coincidir en el estudio. Para cada par $p \in P_{\text{ev}}$ se deducen en compilación su piso irreductible $\underline{\tau}_p$ (suma de duraciones de escenas en las que ambos actores están obligados a actuar juntos) y su techo factible $\overline{\tau}_p$:
+    \begin{equation}
+        \underline{\tau}_p = \sum_{e \in E_{a_{p,1}} \cap E_{a_{p,2}}} d_e, \qquad
+        \overline{\tau}_p = \min\big(U^{(2)}_{a_{p,1}},\; U^{(2)}_{a_{p,2}}\big), \quad \forall p \in P_{\text{ev}}
+        \label{eq:cotas_solape}
+    \end{equation}
+\end{itemize}
+
+\subsection{Nuevas Variables de Decisión y sus Dominios}
+
+El conjunto de variables $\mathcal{X}_2$ conserva todas las variables de $\mathcal{X}_1$ (actualizando las cotas superiores de $tiempo_a$, $espera_a$ y $Costo$ con $U^{(2)}_a$ y $\overline{C}_2 = \sum_{a \in A} c_a U^{(2)}_a$) e incorpora tres familias de variables con dominios exactamente acotados:
+
+\begin{enumerate}
+    \item \textbf{Tiempo de solape por par conflictivo ($solape_p$, para $p \in P_{\text{ev}}$):} Representa las unidades de tiempo durante las cuales los actores $a_{p,1}$ y $a_{p,2}$ coinciden simultáneamente dentro del estudio de grabación:
+    \begin{equation}
+        D(solape_p) = [\underline{\tau}_p \dots \overline{\tau}_p], \quad \forall p \in P_{\text{ev}}
+        \label{eq:dom_solape}
+    \end{equation}
+
+    \item \textbf{Tiempo compartido agregado ($TiempoCompartido$):} Suma total de tiempos de coincidencia en el set sobre todos los pares registrados en \texttt{Evitar}, acotada en el intervalo $[\underline{TC} \dots \overline{TC}]$ con $\underline{TC} = \sum_{p \in P_{\text{ev}}} \underline{\tau}_p$ y $\overline{TC} = \sum_{p \in P_{\text{ev}}} \overline{\tau}_p$ (tomando el dominio $\{0\}$ cuando $P_{\text{ev}} = \emptyset$).
+
+    \item \textbf{Objetivo compuesto lexicográfico ($ObjetivoLex$):} Variable entera auxiliar que codifica sin pérdida de exactitud la jerarquía bicriterio dentro del intervalo entero acotado desde $W \cdot C_{\text{fijo}} + \underline{TC}$ hasta $W \cdot \overline{C}_2 + \overline{TC}$, donde el factor de escala estricto se define como $W = \overline{TC} + 1$.
+\end{enumerate}
+
+\subsection{Restricciones Adicionales de la Parte 2}
+
+Al sistema primario $\{C_1, C_2, C_3\}$ se adjuntan las restricciones $C_4$ y $C_5$:
+
+\begin{enumerate}
+    \setcounter{enumi}{3}
+    \item \textbf{Restricción contractual de disponibilidad máxima en estudio ($C_4$):} Para todo actor con límite temporal activo ($Disp_a > 0$), su estadía continua total desde el inicio de su primera escena hasta el término de la última no puede exceder $Disp_a$:
+    \begin{equation}
+        \forall a \in A \text{ con } Disp_a > 0: \quad tiempo_a \le Disp_a
+        \label{eq:c4_disp}
+    \end{equation}
+    \emph{Semántica intuitiva:} Impide programar las escenas de una estrella demasiado distantes entre sí cuando las escenas ajenas intercaladas harían que su estadía en el set supere el máximo de horas o bloques pactados.
+
+    \item \textbf{Intersección temporal exacta de permanencia para pares en \texttt{Evitar} ($C_5$):} Dado que el actor $a_{p,1}$ permanece en el estudio exactamente durante el intervalo continuo $[ini_{a_{p,1}}, fin_{a_{p,1}}]$ y el actor $a_{p,2}$ durante $[ini_{a_{p,2}}, fin_{a_{p,2}}]$, la intersección geométrica de ambos intervalos es $[\max(ini_{a_{p,1}}, ini_{a_{p,2}}),\; \min(fin_{a_{p,1}}, fin_{a_{p,2}})]$, cuya medida temporal no negativa (cuando ambos actores participan en al menos una escena) viene dada por:
+    \begin{equation}
+        \forall p = (a_{p,1}, a_{p,2}) \in P_{\text{ev}}: \quad
+        solape_p = \max\Big(0,\; \min\big(fin_{a_{p,1}}, fin_{a_{p,2}}\big) - \max\big(ini_{a_{p,1}}, ini_{a_{p,2}}\big)\Big)
+        \label{eq:c5_evitar}
+    \end{equation}
+    y el tiempo total compartido $TC$ (\texttt{TiempoCompartido}) se acumula linealmente como:
+    \begin{equation}
+        TC = \sum_{p \in P_{\text{ev}}} solape_p
+        \label{eq:tc_suma}
+    \end{equation}
+    \emph{Semántica intuitiva:} Si el primero se retira antes de que el segundo llegue ($fin_{a_{p,1}} \le ini_{a_{p,2}}$ o viceversa), la diferencia es no positiva y el operador $\max(0, \cdot)$ asigna cero coincidencia; en caso de traslape temporal en el estudio (ya sea porque actúan en una misma escena o porque uno espera en camerinos mientras el otro graba), $solape_p$ contabiliza exactamente la duración del cruce.
+\end{enumerate}
+
+\subsection{Modelado Exacto de la Función Objetivo Lexicográfica}
+
+El enunciado establece explícitamente una optimización jerárquica de dos niveles: minimizar el tiempo compartido por los actores en \texttt{Evitar} es deseable, pero \emph{la prioridad absoluta es reducir el costo salarial}. En lugar de emplear pesos heurísticos arbitrarios que pudieran sacrificar unidades de costo a cambio de reducir tiempo compartido, o requerir dos ejecuciones secuenciales manuales, se formula la función objetivo escalar exacta $f_2$:
+\begin{equation}
+    \text{Minimizar } ObjetivoLex = W \cdot Costo + TC, \qquad \text{con } W = \overline{TC} + 1
+    \label{eq:obj_lex}
+\end{equation}
+
+\paragraph{Demostración de equivalencia lexicográfica estricta.}
+Sean $\pi_1$ y $\pi_2$ dos cronogramas factibles cualesquiera en $\mathcal{C}_2$. Por construcción de \eqref{eq:cotas_solape} y \eqref{eq:tc_suma}, toda solución factible verifica $0 \le TC \le \overline{TC} = W - 1$, de donde $|TC(\pi_2) - TC(\pi_1)| \le W - 1$.
+\begin{itemize}
+    \item Si $Costo(\pi_1) < Costo(\pi_2)$, al ser $Costo$ entero se tiene $Costo(\pi_2) - Costo(\pi_1) \ge 1$. Entonces:
+    \[
+        ObjetivoLex(\pi_2) - ObjetivoLex(\pi_1) \ge W \cdot 1 - (W - 1) = 1 > 0,
+    \]
+    de modo que $\pi_1$ resulta estrictamente preferido sobre $\pi_2$ con independencia del valor que tome $TC(\pi_2)$.
+    \item Si $Costo(\pi_1) = Costo(\pi_2)$, el término $W \cdot Costo$ se cancela en ambos miembros y se cumple:
+    \[
+        ObjetivoLex(\pi_1) < ObjetivoLex(\pi_2) \iff TC(\pi_1) < TC(\pi_2).
+    \]
+\end{itemize}
+Queda así demostrado que minimizar \eqref{eq:obj_lex} en una única ejecución de MiniZinc halla exactamente el óptimo lexicográfico $(Costo^*, TC^*)$, evitando además cualquier desbordamiento entero de 32 bits gracias a la cota ajustada $W = \overline{TC} + 1$ (en \texttt{Desenfreno4.dzn}, $\overline{TC} = 100 \implies W = 101$ y $ObjetivoLex^* = 101 \times 880 + 37 = 88\,917 \ll 2^{31}-1$).
