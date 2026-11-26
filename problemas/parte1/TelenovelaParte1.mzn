@@ -18,11 +18,16 @@ set of int: POSICIONES = 1..M;
 
 array[ACTORES, 1..M+1] of int: Escenas;
 
-% Flags opcionales para estudios de ablacion, estrategias y formato de salida
-bool: usar_simetrias = true;
-bool: usar_redundantes = true;
-int: estrategia = 1;
-bool: salida_normalizada_pura = false;
+% Flags opcionales sobreescribibles por CLI (-D) sin alterar archivos .dzn
+opt bool: opt_usar_simetrias;
+opt bool: opt_usar_redundantes;
+opt int:  opt_estrategia;
+opt bool: opt_salida_pura;
+
+bool: usar_simetrias = opt_usar_simetrias default true;
+bool: usar_redundantes = opt_usar_redundantes default true;
+int:  estrategia = opt_estrategia default 1;
+bool: salida_normalizada_pura = opt_salida_pura default false;
 
 % ------------------------------------------------------------------------------
 % 2. VALIDACION DE CONSISTENCIA DE PARAMETROS (ASERCIONES)
