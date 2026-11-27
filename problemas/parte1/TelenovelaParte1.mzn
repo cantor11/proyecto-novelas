@@ -1,21 +1,13 @@
-% ==============================================================================
-% PROYECTO DE CURSO - PROGRAMACION POR RESTRICCIONES
+% Proyecto de Curso - Programacion por Restricciones
 % Parte 1: Planificacion de los ensayos en una telenovela (Minimizacion de Costo)
 % Escuela de Ingenieria de Sistemas y Computacion - Universidad del Valle
-%
-% Integrantes:
-%   - Cristian David Cabrera Pantoja
-%   - Junior Orlando Cantor Arevalo
-%   - Juan Diego Cardenas Mejia
-% Profesor:
-%   - Robinson Duque
-% ==============================================================================
+% Integrantes: Cristian David Cabrera Pantoja, Junior Orlando Cantor Arevalo,
+%              Juan Diego Cardenas Mejia
+% Profesor: Robinson Duque
 
 include "globals.mzn";
 
-% ------------------------------------------------------------------------------
-% 1. PARAMETROS DE ENTRADA NORMALIZADOS (*.dzn)
-% ------------------------------------------------------------------------------
+% --- 1. Parametros de entrada ---
 enum ACTORES;
 array[int] of int: Duracion;
 
@@ -25,9 +17,7 @@ set of int: POSICIONES = 1..M;
 
 array[ACTORES, 1..M+1] of int: Escenas;
 
-% ------------------------------------------------------------------------------
-% 2. VALIDACION DE CONSISTENCIA DE PARAMETROS (ASERCIONES)
-% ------------------------------------------------------------------------------
+% --- 2. Validacion de parametros ---
 constraint assert(M >= 1,
     "Error de entrada: el numero de escenas M debe ser al menos 1.");
 constraint assert(card(ACTORES) >= 1,
@@ -45,12 +35,10 @@ constraint assert(
     "Error de entrada: el costo salarial Escenas[a, M+1] no puede ser negativo."
 );
 
-% ------------------------------------------------------------------------------
-% 3. PARAMETROS DERIVADOS Y COTAS EXACTAS DE DOMINIO A PRIORI
-% ------------------------------------------------------------------------------
+% --- 3. Parametros derivados y cotas ---
 int: D_total = sum(e in ESCENAS)(Duracion[e]);
 
-% Ordenamiento ascendente de Duracion mediante conteo de rango estricto
+% Duraciones ordenadas ascendentemente por conteo de rango
 array[ESCENAS] of 1..M: rango_dur = [
     1 + sum(e2 in ESCENAS where
         Duracion[e2] < Duracion[e] \/ (Duracion[e2] == Duracion[e] /\ e2 < e)
@@ -75,7 +63,6 @@ array[ACTORES] of int: dur_max_actor = [
 int: costo_fijo = sum(a in ACTORES)(costo_actor[a] * dur_min_actor[a]);
 int: costo_max  = sum(a in ACTORES)(costo_actor[a] * dur_max_actor[a]);
 
-% Cotas globales ajustadas para las declaraciones de arreglos de variables
 int: max_primera_global = max([
     if num_esc_actor[a] > 0 then M - num_esc_actor[a] + 1 else 1 endif | a in ACTORES
 ]);
@@ -90,13 +77,13 @@ int: min_tiempo_global = min(dur_min_actor);
 int: max_tiempo_global = max(dur_max_actor);
 int: max_espera_global = max([dur_max_actor[a] - dur_min_actor[a] | a in ACTORES]);
 
-% Escenas sin participacion de actores (para simetria S3 y ruptura S1)
+% Escenas sin actores
 array[int] of ESCENAS: escenas_vacias = [
     e | e in ESCENAS where forall(a in ACTORES)(Escenas[a, e] == 0)
 ];
 int: q_vacias = length(escenas_vacias);
 
-% Sumas prefijas minimas de escenas ajenas por actor (para cota redundante R4)
+% Sumas prefijas minimas de escenas ajenas por actor (para R4)
 array[ACTORES, ESCENAS] of int: rango_ajena = array2d(ACTORES, ESCENAS, [
     if Escenas[a, e] == 0 then
         1 + sum(e2 in ESCENAS where
@@ -111,7 +98,7 @@ array[ACTORES, 0..M] of int: pref_min_ajenas = array2d(ACTORES, 0..M, [
     | a in ACTORES, q in 0..M
 ]);
 
-% Ranking estatico de escenas por peso salarial ascendente (para busqueda E1)
+% Rango estatico de escenas por peso salarial ascendente (para E1)
 array[ESCENAS] of int: peso_salarial_esc = [
     sum(a in ACTORES where Escenas[a, e] == 1)(costo_actor[a]) | e in ESCENAS
 ];
@@ -123,9 +110,7 @@ array[ESCENAS] of 1..M: rango_peso_esc = [
     | e in ESCENAS
 ];
 
-% ------------------------------------------------------------------------------
-% 4. VARIABLES DE DECISION Y DOMINIOS ACOTADOS (CONSISTENCIA DE NODO INICIAL)
-% ------------------------------------------------------------------------------
+% --- 4. Variables de decision y dominios ---
 array[POSICIONES] of var ESCENAS: Orden;
 array[ESCENAS]    of var POSICIONES: Pos;
 array[0..M]       of var 0..D_total: Acum;
@@ -139,7 +124,6 @@ array[ACTORES] of var 0..max_espera_global:  espera;
 
 var costo_fijo..costo_max: Costo;
 
-% Acotamiento unario exacto por posicion k y por actor a
 constraint forall(k in POSICIONES)(
     Acum[k] >= sum(j in 1..k)(dur_ord[j]) /\
     Acum[k] <= sum(j in M-k+1..M)(dur_ord[j])
@@ -161,19 +145,17 @@ constraint forall(a in ACTORES)(
     endif
 );
 
-% ------------------------------------------------------------------------------
-% 5. RESTRICCIONES PRIMARIAS DEL MODELO COP (PARTE 1)
-% ------------------------------------------------------------------------------
-% C1: Biyeccion primal-dual entre secuencia de escenas y posicion por escena
+% --- 5. Restricciones primarias ---
+% C1: Biyeccion entre secuencia de escenas y posicion por escena
 constraint inverse(Orden, Pos);
 
-% C2: Cronologia acumulada continua de rodaje en el estudio
+% C2: Tiempo acumulado de rodaje
 constraint Acum[0] = 0 /\ Acum[M] = D_total;
 constraint forall(k in POSICIONES)(
     Acum[k] = Acum[k - 1] + Duracion[Orden[k]]
 );
 
-% C3: Intervalo de permanencia en el set por actor (primera a ultima escena)
+% C3: Intervalo de permanencia en el estudio por actor
 constraint forall(a in ACTORES where num_esc_actor[a] > 0)(
     primera[a] = min([Pos[e] | e in ESCENAS where Escenas[a, e] == 1]) /\
     ultima[a]  = max([Pos[e] | e in ESCENAS where Escenas[a, e] == 1]) /\
@@ -183,23 +165,21 @@ constraint forall(a in ACTORES where num_esc_actor[a] > 0)(
     espera[a]  = tiempo[a] - dur_min_actor[a]
 );
 
-% Funcion objetivo: costo salarial total de permanencia en el estudio
+% Funcion objetivo: costo salarial total
 constraint Costo = sum(a in ACTORES)(costo_actor[a] * tiempo[a]);
 
-% ------------------------------------------------------------------------------
-% 6. ELIMINACION DE SIMETRIAS (S1, S2, S3)
-% ------------------------------------------------------------------------------
-% S3: Fijacion canonica en prefijo de escenas sin participacion de actores
+% --- 6. Eliminacion de simetrias (S1, S2, S3) ---
+% S3: Escenas vacias fijadas en prefijo
 constraint forall(j in 1..q_vacias)(
     Orden[j] = escenas_vacias[j]
 );
 
-% S1: Ruptura de simetria global de inversion temporal sobre escenas activas
+% S1: Ruptura de inversion temporal sobre escenas activas
 constraint if M - q_vacias >= 2 then
     Orden[q_vacias + 1] < Orden[M]
 else true endif;
 
-% S2: Ordenamiento canonico entre escenas gemelas (mismos actores y duracion)
+% S2: Orden canonico entre escenas gemelas
 constraint forall(e1, e2 in ESCENAS where
     e1 < e2 /\
     Duracion[e1] == Duracion[e2] /\
@@ -208,10 +188,8 @@ constraint forall(e1, e2 in ESCENAS where
     Pos[e1] < Pos[e2]
 );
 
-% ------------------------------------------------------------------------------
-% 7. RESTRICCIONES REDUNDANTES DE FORTALECIMIENTO DE PROPAGACION (R1 - R4)
-% ------------------------------------------------------------------------------
-% R1: Descomposicion lineal exacta de espera sobre escenas ajenas intermedias
+% --- 7. Restricciones redundantes (R1 - R4) ---
+% R1: Descomposicion lineal de espera sobre escenas ajenas intermedias
 constraint Costo = costo_fijo + sum(a in ACTORES)(costo_actor[a] * espera[a]);
 constraint forall(a in ACTORES where num_esc_actor[a] > 0)(
     espera[a] = sum(e in ESCENAS where Escenas[a, e] == 0)(
@@ -219,7 +197,7 @@ constraint forall(a in ACTORES where num_esc_actor[a] > 0)(
     )
 );
 
-% R2: Acotamiento combinatorio de diferencias temporales entre pares de turnos
+% R2: Cotas de diferencias temporales entre pares de turnos
 constraint forall(k1 in 1..M-2, k2 in k1+1..M-1)(
     Acum[k2] - Acum[k1] >= sum(j in 1..(k2 - k1))(dur_ord[j]) /\
     Acum[k2] - Acum[k1] <= sum(j in M-(k2 - k1)+1..M)(dur_ord[j])
@@ -233,10 +211,7 @@ constraint forall(a in ACTORES where num_esc_actor[a] > 0)(
     else true endif
 );
 
-% ------------------------------------------------------------------------------
-% 8. ESTRATEGIA DE BUSQUEDA Y DISTRIBUCION
-% ------------------------------------------------------------------------------
-% Vista reindexada por peso salarial ascendente e intercalada Outside-In
+% --- 8. Estrategia de busqueda ---
 array[POSICIONES] of var 1..M: OrdenRango = [
     rango_peso_esc[Orden[k]] | k in POSICIONES
 ];
@@ -245,34 +220,32 @@ array[POSICIONES] of var 1..M: OrdenRangoExt = [
     | k in POSICIONES
 ];
 
-% Estrategias alternativas exploradas experimentalmente (Seccion 4 del Informe):
+% Variantes evaluadas en la Seccion 4 del informe:
 % E2: int_search([if k mod 2 == 1 then Orden[(k+1) div 2] else Orden[M-(k div 2)+1] endif | k in POSICIONES], input_order, indomain_min, complete)
 % E3: int_search(Orden, input_order, indomain_min, complete)
 % E4: int_search(Orden, first_fail, indomain_min, complete)
 % E5: int_search(Orden, first_fail, indomain_split, complete)
 % E6: int_search([Pos[sum(e in ESCENAS where rango_peso_esc[e] == M-k+1)(e)] | k in 1..M], input_order, indomain_median, complete)
 % E7: int_search(OrdenRangoExt, dom_w_deg, indomain_min, complete)
-% E8: solve minimize Costo; (busqueda libre nativa del solver)
+% E8: solve minimize Costo;
 solve :: int_search(OrdenRangoExt, input_order, indomain_min, complete)
     minimize Costo;
 
-% ------------------------------------------------------------------------------
-% 9. INTERFAZ DE SALIDA NORMALIZADA Y VERIFICACION TABULAR DE LA SOLUCION
-% ------------------------------------------------------------------------------
+% --- 9. Salida ---
 output
     [
         show(Orden[k]) ++ if k < M then " " else " " ++ show(Costo) ++ "\n" endif
         | k in POSICIONES
     ] ++
     [
-        "************************************************************************\n",
+        "------------------------------------------------------------\n",
         "PLANIFICACION DE ENSAYOS EN TELENOVELA - PARTE 1\n",
-        "************************************************************************\n",
+        "------------------------------------------------------------\n",
         "Orden de las Escenas: ", show(Orden), "\n",
         "Duracion por Posicion: ", show([Duracion[fix(Orden[k])] | k in POSICIONES]), "\n",
         "Costo Total Optimo:   ", show(Costo), " (Costo base sin esperas: ", show(costo_fijo), ")\n",
-        "........................................................................\n",
-        "Cronograma por Actor ([X]=Actua, [.]=Espera en estudio, [ ]=Fuera):\n"
+        "------------------------------------------------------------\n",
+        "Cronograma por Actor ([X]=Actua, [.]=Espera, [ ]=Fuera):\n"
     ] ++
     [
         (if k == 1 then show(a) ++ "\t: " else "" endif) ++
@@ -287,4 +260,4 @@ output
          else "" endif)
         | a in ACTORES, k in POSICIONES
     ] ++
-    ["************************************************************************\n"];
+    ["------------------------------------------------------------\n"];

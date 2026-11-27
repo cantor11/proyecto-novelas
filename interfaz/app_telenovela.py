@@ -1,20 +1,9 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
-Interfaz grafica (Tkinter) y de linea de comandos para el Proyecto de Curso:
-Planificacion de los ensayos en una telenovela (Parte 1 y Parte 2).
-
-Lee archivos de entrada normalizados (*.dzn), ejecuta los modelos COP en MiniZinc,
-verifica matematicamente todas las restricciones del pedido de entrada, visualiza
-el diagrama de Gantt de permanencia/esperas/conflictos y escribe el archivo de
-texto con la salida normalizada de una linea.
+Interfaz grafica (Tkinter) y CLI para Planificacion de Ensayos en Telenovela (Parte 1 y Parte 2).
+Carga archivos .dzn, ejecuta MiniZinc, verifica restricciones y exporta salidas .txt normalizadas.
 """
-
-from __future__ import annotations
 
 import argparse
-import glob
-import os
 import re
 import subprocess
 import sys
@@ -261,25 +250,21 @@ def construir_codigo_variante_mzn(
     usar_simetrias: bool = True,
     usar_redundantes: bool = True,
 ) -> str:
-    """
-    Genera en memoria una variante experimental del modelo MiniZinc (para ablacion
-    sin simetrias, sin redundantes o con estrategias alternativas E2..E8) sin
-    requerir tipos opcionales ajenos a los fundamentos del curso en los archivos .mzn.
-    """
+    """Construye en memoria una variante del modelo MiniZinc para ablacion o estrategias E2..E8."""
     codigo = modelo_base.read_text(encoding="utf-8")
 
     if not usar_simetrias:
         codigo = re.sub(
-            r"% 6\. ELIMINACION DE SIMETRIAS \(S1, S2, S3\).*?(?=% -+\s*\n% 7\. RESTRICCIONES REDUNDANTES)",
-            "% 6. ELIMINACION DE SIMETRIAS (DESACTIVADA EN ABLACION)\n",
+            r"% --- 6\. Eliminacion de simetrias.*?(?=% --- 7\. Restricciones redundantes)",
+            "% --- 6. Eliminacion de simetrias (desactivada) ---\n\n",
             codigo,
             flags=re.S,
         )
 
     if not usar_redundantes:
         codigo = re.sub(
-            r"% 7\. RESTRICCIONES REDUNDANTES DE FORTALECIMIENTO DE PROPAGACION \(R1 - R4\).*?(?=% -+\s*\n% 8\. ESTRATEGIA DE BUSQUEDA)",
-            "% 7. RESTRICCIONES REDUNDANTES (DESACTIVADAS EN ABLACION)\n",
+            r"% --- 7\. Restricciones redundantes.*?(?=% --- 8\. Estrategia de busqueda)",
+            "% --- 7. Restricciones redundantes (desactivadas) ---\n\n",
             codigo,
             flags=re.S,
         )
@@ -315,8 +300,8 @@ def construir_codigo_variante_mzn(
         }[estrategia]
 
         codigo = re.sub(
-            r"% 8\. ESTRATEGIA DE BUSQUEDA Y DISTRIBUCION.*?(?=% -+\s*\n% 9\. INTERFAZ DE SALIDA)",
-            f"% 8. ESTRATEGIA DE BUSQUEDA E{estrategia}\n" + bloque_e + "\n",
+            r"% --- 8\. Estrategia de busqueda.*?(?=% --- 9\. Salida)",
+            f"% --- 8. Estrategia de busqueda (E{estrategia}) ---\n" + bloque_e + "\n",
             codigo,
             flags=re.S,
         )

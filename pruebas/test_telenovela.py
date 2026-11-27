@@ -1,22 +1,8 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
-Suite automatizada de validacion (unittest) para el Proyecto de Curso:
-Planificacion de los ensayos en una telenovela (Parte 1 y Parte 2).
-
-Verifica:
-1. Existencia, sintaxis y formato normalizado de salidas (.txt) en las 13 instancias.
-2. Aserciones ante parametros invalidos o disponibilidades infactibles.
-3. Optimalidad global certificada contra un oraculo exacto independiente (Held-Karp DP)
-   y equivalencia exacta entre Gecode 6.4.0 y Chuffed 0.14.0, incluyendo Evitar vacio.
-4. Preservacion del optimo y reduccion del arbol de busqueda por eliminacion de
-   simetrias (S1-S3), restricciones redundantes (R1-R4) y prioridad lexicografica.
-5. Ejecucion end-to-end del modulo de interfaz/exportacion normalizada (interfaz/app_telenovela.py).
+Pruebas unitarias (unittest) para los modelos COP de Parte 1 y Parte 2,
+oraculos exactos DP/B&B, ablacion de simetrias/redundantes e interfaz E/S.
 """
 
-from __future__ import annotations
-
-import os
 import subprocess
 import sys
 import tempfile
@@ -27,7 +13,7 @@ from typing import Dict, List, Tuple
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ / "interfaz"))
 
-from app_telenovela import (  # noqa: E402
+from app_telenovela import (
     MODELO_PARTE1,
     MODELO_PARTE2,
     ejecutar_minizinc,
@@ -37,10 +23,7 @@ from app_telenovela import (  # noqa: E402
 
 
 def oraculo_dp_parte1(datos: Dict) -> int:
-    """
-    Oraculo exacto independiente O(M * 2^M) por Programacion Dinamica sobre subconjuntos
-    de escenas para certificar el costo optimo global de la Parte 1.
-    """
+    """Oraculo exacto O(M * 2^M) por programacion dinamica para la Parte 1."""
     n = datos["num_actores"]
     m = datos["num_escenas"]
     dur = datos["duracion"]
@@ -98,10 +81,7 @@ def oraculo_dp_parte1(datos: Dict) -> int:
 
 
 def oraculo_exacto_parte2_pequeno(datos: Dict) -> Tuple[int, int]:
-    """
-    Oraculo exacto independiente Branch-and-Bound para instancias medianas/pequenas
-    de Parte 2 que certifica el par lexicografico optimo (Costo*, TiempoCompartido*).
-    """
+    """Par lexicografico optimo (Costo*, TiempoCompartido*) por Branch-and-Bound exacto."""
     n = datos["num_actores"]
     m = datos["num_escenas"]
     dur = datos["duracion"]
@@ -299,7 +279,7 @@ class TestProyectoTelenovelaCOP(unittest.TestCase):
             self.assertEqual(res_gec["evaluacion"]["costo_total"], opt_dp)
             self.assertEqual(res_chu["evaluacion"]["costo_total"], opt_dp)
 
-        # Certificacion de casos insignia M=20: Desenfreno2 (871) y Desenfreno4 (880, 37)
+        # Verificacion de instancias M=20: Desenfreno2 (871) y Desenfreno4 (880, 37)
         res_d2 = ejecutar_minizinc(RAIZ / "datos" / "parte1" / "Desenfreno2.dzn", solver="chuffed", timeout_ms=25000)
         self.assertTrue(res_d2["optimo_probado"])
         self.assertEqual(res_d2["evaluacion"]["costo_total"], 871)
