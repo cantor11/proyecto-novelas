@@ -59,7 +59,6 @@ Profesor:
     Imagenes/                     Logo en la raiz y graficas en parte1/ y parte2/.
 
   ProyectoPPR.pdf                 Enunciado del proyecto.
-  ejercicios/CriteriosRubrica.jpg Rubrica de evaluacion.
   readme.txt                      Descripcion de archivos e instrucciones de uso.
   README.md                       Resumen del repositorio.
   GUIA_LATEX.md                   Instrucciones de compilacion LaTeX.
