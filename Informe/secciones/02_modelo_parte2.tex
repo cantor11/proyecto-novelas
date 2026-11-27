@@ -1,0 +1,61 @@
+% !TEX root = ../main.tex
+\section{Parte 2: Disponibilidad, Conflictos (\texttt{Evitar}) y Objetivo Jerárquico}
+\label{sec:modelo_parte2}
+
+La Parte 2 extiende $\mathcal{P}_1$ al modelo $\mathcal{P}_2 = \langle \mathcal{X}_2, \mathcal{D}_2, \mathcal{C}_2, f_2 \rangle$, incorporando topes contractuales de tiempo máximo en el estudio por actor (\texttt{Disponibilidad}) y pares de actores cuya coincidencia simultánea en el estudio debe reducirse (\texttt{Evitar}), dando prioridad absoluta a minimizar primero el costo salarial.
+
+\subsection{Parámetros, Variables y Dominios Adicionales}
+
+A los datos de la Parte 1 se suman dos tablas de entrada:
+\begin{itemize}
+    \item \textbf{Disponibilidad por actor (\texttt{Disponibilidad}):} Relación de $N$ pares $(\text{actor}, \text{límite})$ asociada a cada $a \in A$ como $Disp_a \in \mathbb{Z}_{\ge 0}$ sin depender del orden de filas en el archivo \texttt{.dzn}. El valor $Disp_a = 0$ indica tiempo ilimitado y $Disp_a > 0$ fija la permanencia máxima admisible, ajustando la cota superior $U^{(2)}_a$ desde la raíz:
+    \begin{equation}
+        U^{(2)}_a = \begin{cases}
+            0, & \text{si } K_a = 0 \\
+            \min(D_{\text{total}}, Disp_a), & \text{si } K_a > 0 \land Disp_a > 0 \\
+            D_{\text{total}}, & \text{si } K_a > 0 \land Disp_a = 0
+        \end{cases}
+        \label{eq:u2_actor}
+    \end{equation}
+    Si $Disp_a > 0$ y $D^{\min}_a > Disp_a$, la instancia es infactible y es rechazada por aserción estática. Si $Disp_a = D^{\min}_a$ (Actor 7 en \texttt{Desenfreno4.dzn}: $D^{\min}_7 = Disp_7 = 5$), el dominio se reduce en compilación a $D(tiempo_7) = \{5\}$ y $D(espera_7) = \{0\}$.
+    \item \textbf{Pares a evitar (\texttt{Evitar}):} Lista $P_{\text{ev}} = \{1, \dots, L\}$ ($L \ge 0$, admitiendo $L = 0$) de pares $(a_{p,1}, a_{p,2}) \in A^2$ con $a_{p,1} \neq a_{p,2}$, con cotas estáticas de coincidencia:
+    \begin{equation}
+        \underline{\tau}_p = \sum_{e \in E_{a_{p,1}} \cap E_{a_{p,2}}} d_e, \qquad
+        \overline{\tau}_p = \min\big(U^{(2)}_{a_{p,1}},\; U^{(2)}_{a_{p,2}}\big), \quad \forall p \in P_{\text{ev}}
+        \label{eq:cotas_solape}
+    \end{equation}
+\end{itemize}
+
+Conservando $\mathcal{X}_1$ con $U^{(2)}_a$ y $\overline{C}_2 = \sum_{a \in A} c_a U^{(2)}_a$, se agregan las variables:
+\begin{enumerate}
+    \item \textbf{Solape por par ($solape_p$, $p \in P_{\text{ev}}$):} Tiempo simultáneo en estudio de $a_{p,1}$ y $a_{p,2}$, con $D(solape_p) = [\underline{\tau}_p \dots \overline{\tau}_p]$.
+    \item \textbf{Tiempo compartido total ($TiempoCompartido$):} Variable $TC$ con dominio $[\underline{TC} \dots \overline{TC}]$, donde $\underline{TC} = \sum_{p \in P_{\text{ev}}} \underline{\tau}_p$ y $\overline{TC} = \sum_{p \in P_{\text{ev}}} \overline{\tau}_p$ ($\{0\}$ si $P_{\text{ev}} = \emptyset$).
+    \item \textbf{Objetivo lexicográfico ($ObjetivoLex$):} Entero con dominio $[W \cdot C_{\text{fijo}} + \underline{TC} \;\dots\; W \cdot \overline{C}_2 + \overline{TC}]$, donde $W = \overline{TC} + 1$.
+\end{enumerate}
+
+\subsection{Restricciones Adicionales y Función Objetivo Lexicográfica}
+
+Al sistema $\{C_1, C_2, C_3\}$ se añaden $C_4$ y $C_5$:
+\begin{enumerate}
+    \setcounter{enumi}{3}
+    \item \textbf{Tope de disponibilidad ($C_4$):} Ningún actor con límite activo puede superar su tiempo pactado en el set:
+    \begin{equation}
+        \forall a \in A \text{ con } Disp_a > 0: \quad tiempo_a \le Disp_a
+        \label{eq:c4_disp}
+    \end{equation}
+    \emph{Semántica:} Restringe la cantidad de escenas ajenas intercalables entre la primera y la última aparición de $a$.
+
+    \item \textbf{Intersección temporal de estadías para \texttt{Evitar} ($C_5$):} Para todo par $p = (a_{p,1}, a_{p,2}) \in P_{\text{ev}}$ con ambos actores activos ($solape_p = 0$ si alguno verifica $K_a = 0$), el cruce de sus estadías continuas viene dado por:
+    \begin{align}
+        solape_p &= \max\Big(0,\; \min\big(fin_{a_{p,1}}, fin_{a_{p,2}}\big) - \max\big(ini_{a_{p,1}}, ini_{a_{p,2}}\big)\Big) \label{eq:c5_evitar} \\
+        TC &= \sum_{p \in P_{\text{ev}}} solape_p \label{eq:tc_suma}
+    \end{align}
+    \emph{Semántica:} Si un actor sale antes de que el otro ingrese, la diferencia es no positiva y $solape_p = 0$; si sus estadías se cruzan (actuando juntos o esperando en paralelo), $solape_p$ mide la longitud exacta del traslape.
+\end{enumerate}
+
+Para optimizar jerárquicamente $Costo$ en primer nivel y $TC$ en segundo nivel en una sola ejecución, se minimiza:
+\begin{equation}
+    \text{Minimizar } ObjetivoLex = W \cdot Costo + TC, \qquad W = \overline{TC} + 1
+    \label{eq:obj_lex}
+\end{equation}
+\emph{Prueba de equivalencia lexicográfica:} Para dos soluciones factibles $\pi_1, \pi_2$, se cumple $0 \le TC \le \overline{TC} = W - 1$, luego $|TC(\pi_2) - TC(\pi_1)| \le W - 1$. (i) Si $Costo(\pi_1) < Costo(\pi_2)$, por integridad $Costo(\pi_2) - Costo(\pi_1) \ge 1$ y $ObjetivoLex(\pi_2) - ObjetivoLex(\pi_1) \ge W - (W - 1) = 1 > 0$, prefiriéndose siempre $\pi_1$ sin importar $TC$. (ii) Si $Costo(\pi_1) = Costo(\pi_2)$, entonces $ObjetivoLex(\pi_1) < ObjetivoLex(\pi_2) \iff TC(\pi_1) < TC(\pi_2)$. La cota ajustada $W = \overline{TC} + 1$ evita desbordamiento en enteros de 32 bits (en \texttt{Desenfreno4.dzn}, $W = 101$ y $ObjetivoLex^* = 101 \times 880 + 37 = 88\,917 \ll 2^{31}-1$). La búsqueda aplica igualmente $E_1$ (\emph{Outside-In} por peso salarial ascendente), cerrando temprano $primera_a$ y $ultima_a$ para activar $C_4$ y $C_5$.

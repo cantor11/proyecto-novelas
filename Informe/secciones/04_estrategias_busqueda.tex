@@ -1,0 +1,46 @@
+% !TEX root = ../main.tex
+\section{La Búsqueda: Diseño y Sustentación de Estrategias}
+\label{sec:busqueda}
+
+El espacio de permutaciones crece como $|\mathfrak{S}_M| = M!$ ($20! \approx 2{,}43 \times 10^{18}$ en ``Desenfreno de Pasiones''). Bajo el esquema \emph{Branch-and-Bound} sobre dominios finitos (Capítulo 8 de Apt), cada nodo interno divide el subproblema imponiendo $x = v$ frente a $x \neq v$ en asignación puntual (o $x \le \lfloor(l+u)/2\rfloor$ frente a $x > \lfloor(l+u)/2\rfloor$ en bisección de intervalo), propagando restricciones hasta punto fijo; al hallar una hoja factible incumbente, inyecta dinámicamente el corte de mejora estricta:
+\begin{equation}
+    Costo \le Costo_{\text{inc}} - 1 \quad (\text{en } \mathcal{P}_1), \qquad
+    ObjetivoLex \le ObjetivoLex_{\text{inc}} - 1 \quad (\text{en } \mathcal{P}_2)
+    \label{eq:bnb_cut_telenovela}
+\end{equation}
+
+\subsection{Estrategias de Búsqueda Evaluadas (\texorpdfstring{$E_1$--$E_8$}{E1-E8})}
+
+Sea $W_e = \sum_{a \in A : p_{a,e}=1} c_a$ el peso salarial de la escena $e$, y $R_k = OrdenRango_k \in \{1,\dots,M\}$ el rango estático de $Orden_k$ ordenado por $W_e$ ascendente (desempatando por menor $e$). Definiendo los vectores intercalados desde los extremos (\emph{Outside-In}):
+\begin{equation}
+    \vec{z}_{\text{ext}} = \big(Orden_1, Orden_M, Orden_2, Orden_{M-1}, \dots\big), \qquad
+    \vec{r}_{\text{ext}} = \big(R_1, R_M, R_2, R_{M-1}, \dots\big)
+    \label{eq:vec_outside_in}
+\end{equation}
+se comparan ocho estrategias:
+\begin{enumerate}
+    \item \textbf{$E_1$ (\emph{Outside-In} por peso salarial ascendente, principal):} Recorre $\vec{r}_{\text{ext}}$ en orden de índice (\texttt{input\_order}) y asigna el mínimo valor disponible (\texttt{indomain\_min}), alternando $1, M, 2, M-1, \dots$ con escenas de menor $W_e$.
+    \item \textbf{$E_2$ (\emph{Outside-In} por índice nominal):} Recorre $\vec{z}_{\text{ext}}$ con \texttt{input\_order} e \texttt{indomain\_min}, sin ponderar tarifas.
+    \item \textbf{$E_3$ (Izquierda a derecha):} Recorre $Orden$ con \texttt{input\_order} e \texttt{indomain\_min} en secuencia $k = 1, \dots, M$.
+    \item \textbf{$E_4$ (\emph{First-Fail} puntual):} Selecciona en $Orden$ el menor dominio (\texttt{first\_fail}) y asigna \texttt{indomain\_min}.
+    \item \textbf{$E_5$ (\emph{First-Fail} por bisección):} Usa \texttt{first\_fail} en $Orden$ con bisección (\texttt{indomain\_split}).
+    \item \textbf{$E_6$ (Escenas críticas al centro):} Recorre $Pos_e$ por $W_e$ descendente (\texttt{input\_order}, priorizando escenas de actores costosos como $c_6 = 40$ y $c_8 = 20$) y asigna el valor mediano (\texttt{indomain\_median}, $\approx M/2$).
+    \item \textbf{$E_7$ (\texttt{dom\_w\_deg} sobre \emph{Outside-In}):} Selecciona en $\vec{r}_{\text{ext}}$ la variable de menor razón $|D(x)|/\text{peso}(x)$ según el conteo acumulado de fallos de sus propagadores (\texttt{dom\_w\_deg}), asignando \texttt{indomain\_min}.
+    \item \textbf{$E_8$ (Nativa \texttt{default} del solver):} Búsqueda autónoma del motor (\emph{activity} en \texttt{Gecode}; VSIDS con cláusulas \emph{nogood} en \texttt{Chuffed}).
+\end{enumerate}
+
+\subsection{Sustentación Teórica de la Estrategia \texorpdfstring{$E_1$}{E1}}
+\label{subsec:sustento_e1}
+
+\begin{itemize}
+    \item \textbf{Cierre bilateral de intervalos actorales:} En $E_3$ ($1 \to M$), $ultima_a$ queda abierta hasta los niveles finales del árbol, por lo que $R_1$ no puede activar espera en niveles altos. En $E_1$ y $E_2$, a profundidad $2r$ quedan fijados $\{1,\dots,r\}$ y $\{M-r+1,\dots,M\}$; todo actor presente en ambos extremos cierra $primera_a \le r$ y $ultima_a \ge M-r+1$, haciendo que $R_1$ sume $+c_a d_e$ a $\underline{Costo}$ por cada escena ajena libre del centro.
+    \item \textbf{Ruptura de simetría $S_1$ en profundidad $2$:} Las variables $Orden_{q+1}$ y $Orden_M$ se instancian en los dos primeros niveles activos, podando el $50\%$ del árbol de inmediato (frente a profundidad $M$ en $E_3$).
+    \item \textbf{Orden económico de valores:} Ubicar escenas livianas en los bordes ($E_4, E_{19}, E_{16}$) deja en el centro las escenas con mayor carga salarial conjunta ($E_7$ con $W_7 = 38$, $E_8$ con $W_8 = 48$ en ``Desenfreno de Pasiones''), obteniendo incumbentes cercanos al óptimo desde las primeras hojas y fortaleciendo el corte \eqref{eq:bnb_cut_telenovela} (Figura~\ref{fig:arbol_bnb_trivial2}).
+\end{itemize}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.90\textwidth]{parte2/arbol_bnb_trivial2.png}
+    \caption{Árbol \emph{Branch-and-Bound} bajo $S_1$--$S_3$, $R_1$--$R_4$ y $E_1$: (a) óptimo en la primera hoja y corte dinámico en \nolinkurl{Trivial2.dzn}; (b) reducción de nodos y fallos en $11{,}45\times$ sobre \nolinkurl{Instancia03_P2.dzn}.}
+    \label{fig:arbol_bnb_trivial2}
+\end{figure}

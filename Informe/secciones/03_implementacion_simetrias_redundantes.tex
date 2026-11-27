@@ -1,0 +1,91 @@
+% !TEX root = ../main.tex
+\section{Implementación: Adherencia a Fundamentos, Simetrías y Redundantes}
+\label{sec:implementacion}
+
+Los modelos de Parte 1 (\nolinkurl{problemas/parte1/}) y Parte 2 (\nolinkurl{problemas/parte2/}) implementan $\mathcal{P}_1$ y $\mathcal{P}_2$ de forma paramétrica, validando con \texttt{assert} que $M \ge 1$, $|A| \ge 1$, $d_e > 0$, $p_{a,e} \in \{0,1\}$, $c_a \ge 0$, $Disp_a \ge 0$, cobertura biyectiva sobre actores en la tabla de disponibilidad, pares irreflexivos en conflictos y $D^{\min}_a \le Disp_a$.
+
+\subsection{Adherencia a los Fundamentos del Curso y Propagadores Globales}
+\label{subsec:adherencia_fundamentos}
+
+\begin{itemize}
+    \item \textbf{Constructos del curso:} Se emplean tipos enumerados (\texttt{enum ACTORES}), \texttt{assert}, \texttt{array2d}, conteo de filas por división entera (\texttt{length(...) div 2}), comprensiones de arreglos filtradas, agregadores (\texttt{sum}, \texttt{min}, \texttt{max}, \texttt{forall}), condicionales \texttt{if-then-else-endif}, salida con \texttt{show}/\texttt{show\_int}/\texttt{fix} y \texttt{int\_search}. Los ordenamientos estáticos de duraciones y pesos salariales se calculan mediante conteo de rango por comparación de pares, sin usar tipos opcionales (\texttt{opt}), \texttt{enum2int} ni funciones externas de ordenamiento.
+    \item \textbf{Tipado de \texttt{Disponibilidad}:} Como los arreglos bidimensionales en MiniZinc exigen tipo homogéneo, la tabla mixta $(\text{actor}, \text{límite})$ de los archivos \texttt{.dzn} usa la correspondencia ordinal $1..N$ de \texttt{ACTORES} mediante $\text{id}_a = \sum_{b \in A : b \le a} 1$, preservando intacto el formato de entrada del enunciado. La conversión \texttt{bool2int} se usa únicamente en la suma redundante $R_1$, manteniendo las restricciones primarias $C_1$--$C_5$ libres de condicionales sobre variables de decisión.
+    \item \textbf{Justificación de \texttt{inverse} y \texttt{element} (\texttt{globals.mzn}):} (1) \texttt{inverse(Orden, Pos)} evita productos cuadráticos de variables y evita declarar $M^2$ reificaciones $(Orden_k = e) \leftrightarrow (Pos_e = k)$ (lo cual violaría el criterio de no condicionar por valores individuales y debilitaría la propagación), manteniendo consistencia de dominio bidireccional sobre solo $2M$ variables e implicando diferencia global en ambos arreglos. (2) La indexación por variable en $d_{Orden_k}$ ($C_2$), $Acum_{primera_a - 1}$, $Acum_{ultima_a}$ ($C_3$) y $P_{\bar{a}}[\cdot]$ ($R_4$) compila al propagador \texttt{element}, evitando $N \cdot M$ implicaciones $(primera_a = k) \implies (ini_a = Acum_{k-1})$ y propagando directamente las cotas hacia $tiempo_a$ y $Costo$.
+\end{itemize}
+
+\subsection{Eliminación de Simetrías y Recuperación de Soluciones}
+\label{subsec:simetrias}
+
+Se identifican tres familias de simetrías sobre $\mathfrak{S}_M$ que dejan invariantes $C_1$--$C_5$, $Costo$ y $TC$:
+\begin{enumerate}
+    \item \textbf{Escenas sin actores en prefijo ($S_3$):} Sea $E_{\emptyset} = \{e \in E \mid \forall a \in A,\; p_{a,e} = 0\}$ el conjunto ordenado $e^{(0)}_1 < \dots < e^{(0)}_q$ de escenas vacías (p.\ ej., escena $1$ en \texttt{Trivial1}; escenas $2$ y $7$ en \texttt{Instancia01\_P1}). Intercalar una escena $e_0 \in E_{\emptyset}$ dentro de $[primera_a, ultima_a]$ solo añade $+d_{e_0}$ de espera innecesaria; en cambio, situar $E_{\emptyset}$ fuera de todos los intervalos actorales (en prefijo o sufijo, en cualquiera de sus $q!$ órdenes) traslada cada $[ini_a, fin_a]$ por una misma constante $\delta$, conservando $tiempo_a = fin_a - ini_a$ y $solape_p$. Se fijan en prefijo:
+    \begin{equation}
+        \forall j \in \{1, \dots, q\}: \quad Orden_j = e^{(0)}_j
+        \label{eq:s3_vacias}
+    \end{equation}
+    Esto poda $q! \cdot (q + 1)$ disposiciones equivalentes de borde e impide que una escena vacía en $Orden_1$ anule $S_1$.
+
+    \item \textbf{Inversión temporal del bloque activo ($S_1$):} Invertir el subarreglo activo $(\pi_{q+1}, \dots, \pi_M)$ ubica cada tramo $[primera_a, ultima_a]$ en posiciones simétricas $M + q + 1 - ultima_a$ y $M + q + 1 - primera_a$ con igual multiconjunto de escenas, conservando $tiempo_a$, $Costo$, los topes $Disp_a$ y los cruces de \texttt{Evitar}. Se rompe la reflexión imponiendo:
+    \begin{equation}
+        M - q \ge 2 \implies Orden_{q+1} < Orden_M
+        \label{eq:s1_inversion}
+    \end{equation}
+
+    \item \textbf{Escenas gemelas ($S_2$):} Dos escenas $e_1 < e_2$ con igual elenco ($\forall a,\; p_{a,e_1} = p_{a,e_2}$) e igual duración ($d_{e_1} = d_{e_2}$, condición necesaria porque si $d_{e_1} \neq d_{e_2}$ su intercambio dentro de la espera de un tercer actor alteraría la estadía de este) son intercambiables (escenas $3, 4$ en \texttt{Trivial1} y \texttt{Trivial2}):
+    \begin{equation}
+        \forall e_1 < e_2 \in E \text{ con } d_{e_1} = d_{e_2} \land (\forall a \in A,\; p_{a,e_1} = p_{a,e_2}): \quad Pos_{e_1} < Pos_{e_2}
+        \label{eq:s2_gemelas}
+    \end{equation}
+\end{enumerate}
+
+\paragraph{Recuperación algebraica de las soluciones eliminadas.}
+Dada la solución óptima canónica $\pi^*$ bajo $S_1 \land S_2 \land S_3$ y las clases de equivalencia de escenas gemelas $G_1, \dots, G_r$ sobre $E \setminus E_{\emptyset}$, toda la órbita de soluciones óptimas descartadas se reconstruye sin re-ejecutar el solver en tres pasos:
+\begin{enumerate}
+    \item \emph{Permutación de gemelas ($S_2$):} Aplicar las $\prod_{\ell=1}^r |G_\ell|!$ permutaciones internas de cada clase $G_\ell$ (p.\ ej., transponer las escenas $3$ y $4$ transforma $(3, 4, 6, 2, 1, 5)$ en $(4, 3, 6, 2, 1, 5)$ sobre \texttt{Trivial2}, y lleva $(1, 3, 4, 2, 6, 5)$ a $(1, 4, 3, 2, 6, 5)$ sobre \texttt{Trivial1}).
+    \item \emph{Reflexión activa ($S_1$):} Invertir el bloque activo $(\pi_{q+1}, \dots, \pi_M) \mapsto (\pi_M, \dots, \pi_{q+1})$, duplicando la órbita (p.\ ej., $[4, 3, 6, 2, 1, 5] \mapsto [5, 1, 2, 6, 3, 4]$).
+    \item \emph{Bordes de escenas vacías ($S_3$):} Repartir las $q$ escenas de $E_{\emptyset}$ entre prefijo y sufijo en sus $q! \cdot (q + 1)$ disposiciones (p.\ ej., en \texttt{Instancia01\_P1} con $E_{\emptyset}=\{2,7\}$ y gemelas $\{3,5\}, \{4,6\}$, estos tres pasos reconstruyen exactamente los $2 \cdot 2 \cdot 2 \cdot (2! \cdot 3) = 48$ óptimos equivalentes de costo $225$).
+\end{enumerate}
+
+\subsection{Restricciones Redundantes y Justificación de Poda}
+\label{subsec:redundantes}
+
+Con los turnos centrales sin fijar, la sustracción $tiempo_a = Acum_{ultima_a} - Acum_{primera_a - 1}$ propaga cotas débiles porque los intervalos de $Acum$ se solapan. Se añaden cuatro familias redundantes ($R_1$--$R_4$):
+\begin{enumerate}
+    \item \textbf{Descomposición lineal de espera ($R_1$):}
+    \begin{align}
+        \forall a \in A \text{ con } K_a > 0: \quad
+        espera_a &= \sum_{e \in E \setminus E_a} d_e \cdot [\![ primera_a < Pos_e \land Pos_e < ultima_a ]\!] \label{eq:r1_espera} \\
+        Costo &= C_{\text{fijo}} + \sum_{a \in A} c_a \cdot espera_a \label{eq:r1_costo}
+    \end{align}
+    \emph{Redundancia semántica:} Por $C_1$--$C_3$, el tramo $[primera_a .. ultima_a]$ contiene todas las escenas de $E_a$ (suma $D^{\min}_a$) más las ajenas estrictamente intermedias; restar $D^{\min}_a$ de $tiempo_a$ produce \eqref{eq:r1_espera} y sumar ponderado por $c_a$ da \eqref{eq:r1_costo}.\par
+    \emph{Justificación de poda:} Bajo búsqueda \emph{Outside-In}, si $primera_a \le r$ y $ultima_a \ge M - r + 1$, toda escena libre $e \notin E_a$ cumple $D(Pos_e) \subseteq [r+1 .. M-r]$, fijando el booleano a $1$ por consistencia de cotas y sumando $+c_a d_e$ a $\underline{Costo}$ antes de ubicar $e$; en Parte 2, si $d_e > U^{(2)}_a - D^{\min}_a$, fuerza el booleano a $0$ y excluye a $e$ del intervalo de $a$.
+
+    \item \textbf{Diferencias temporales en subintervalos ($R_2$):} Para $1 \le k_1 < k_2 \le M - 1$ ($\Delta k = k_2 - k_1$):
+    \begin{equation}
+        \sum_{j=1}^{\Delta k} d^{\uparrow}_j \le Acum_{k_2} - Acum_{k_1} \le \sum_{j=M-\Delta k+1}^{M} d^{\uparrow}_j
+        \label{eq:r2_subintervalos}
+    \end{equation}
+    \emph{Redundancia semántica:} Por $C_1$ y $C_2$, $Acum_{k_2} - Acum_{k_1}$ suma $\Delta k$ escenas distintas de $E$, acotadas entre las $\Delta k$ menores y las $\Delta k$ mayores duraciones.\par
+    \emph{Justificación de poda:} Proyecta la unicidad de escenas sobre cualquier subintervalo, reemplazando la cota local débil $[\Delta k \cdot d^{\uparrow}_1,\; \Delta k \cdot d^{\uparrow}_M]$ de $C_2$ y estrechando $ini_a$ y $fin_a$.
+
+    \item \textbf{Amplitud posicional ($R_3$):} Con duraciones ordenadas $d^{\uparrow}_{\bar{a}, 1} \le \dots \le d^{\uparrow}_{\bar{a}, M-K_a}$ en $E \setminus E_a$ y tope de escenas intermedias admisibles $W^{\max}_a = |\{q \in \{1..M-K_a\} \mid \sum_{j=1}^q d^{\uparrow}_{\bar{a}, j} \le U^{(2)}_a - D^{\min}_a\}|$:
+    \begin{align}
+        \forall a \in A \text{ con } K_a > 0: \quad
+        ultima_a - primera_a &\ge K_a - 1 \quad (\text{en } \mathcal{P}_1 \text{ y } \mathcal{P}_2) \label{eq:r3_inf} \\
+        ultima_a - primera_a &\le K_a + W^{\max}_a - 1 \quad (\text{en } \mathcal{P}_2) \label{eq:r3_amplitud}
+    \end{align}
+    \emph{Redundancia semántica:} Por principio del palomar sobre $C_1$, $K_a$ escenas propias ocupan al menos $K_a$ turnos; en $\mathcal{P}_2$, intercalar $q > W^{\max}_a$ escenas ajenas sumaría más que $U^{(2)}_a - D^{\min}_a$, violando $C_4$.\par
+    \emph{Justificación de poda:} Traduce los topes temporales $Disp_a$ a cotas sobre posiciones $Pos_e$; en \texttt{Desenfreno4}, para el Actor 7 ($W^{\max}_7 = 0$), fija en la raíz $ultima_7 - primera_7 = 3$, confinando sus cuatro escenas a turnos contiguos sin ramificar.
+
+    \item \textbf{Exceso posicional vía \texttt{element} ($R_4$):} Con $P_{\bar{a}}[q] = \sum_{j=1}^q d^{\uparrow}_{\bar{a}, j}$ ($0 < K_a < M$):
+    \begin{equation}
+        espera_a \ge P_{\bar{a}}\big[ultima_a - primera_a + 1 - K_a\big]
+        \label{eq:r4_exceso}
+    \end{equation}
+    \emph{Redundancia semántica:} Si el tramo $[primera_a .. ultima_a]$ abarca $K_a + q$ turnos, contiene exactamente $q$ escenas distintas de $E \setminus E_a$, cuya duración acumulada es al menos $P_{\bar{a}}[q]$.\par
+    \emph{Justificación de poda:} Cualquier separación $ultima_a - primera_a > K_a - 1$ eleva de inmediato $\underline{espera}_a$ y $\underline{Costo}$ vía \texttt{element}, incluso cuando las escenas centrales siguen libres y ningún literal individual de $R_1$ se ha fijado a $1$.
+\end{enumerate}
+
+\subsection{Interfaz Gráfica y Salida Normalizada}
+
+El módulo \nolinkurl{interfaz/app_telenovela.py} cubre la entrada/salida normalizada y visual (Secciones 2.1, 2.2 y 3.2 del enunciado): exporta archivos \texttt{.txt} de una sola línea en \nolinkurl{salidas/parte1/} ($e_1 \dots e_M\; Costo^*$) y \nolinkurl{salidas/parte2/} ($e_1 \dots e_M\; Costo^*\; TC^*$), e integra una interfaz en \texttt{Tkinter} que lee cualquier \texttt{.dzn}, ejecuta \texttt{Chuffed} o \texttt{Gecode}, verifica todas las restricciones en Python y muestra el diagrama de Gantt (actuación, espera y solapes de \texttt{Evitar}), la tabla por actor y el visor de archivos.

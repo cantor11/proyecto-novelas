@@ -1,0 +1,99 @@
+% !TEX root = ../main.tex
+\section{Parte 1: Modelo COP de Planificación de Ensayos}
+\label{sec:modelo_parte1}
+
+La planificación del orden de grabación de las escenas de una telenovela se formula como un Problema de Optimización con Restricciones sobre dominios enteros finitos ($\text{COP}(\mathcal{FD})$), dado por $\mathcal{P}_1 = \langle \mathcal{X}_1, \mathcal{D}_1, \mathcal{C}_1, f_1 \rangle$. Cada actor cobra por unidad de tiempo continua de permanencia en el estudio, contada desde el inicio de la primera escena en que participa hasta la finalización de la última; el objetivo es hallar una permutación de las escenas que minimice el costo salarial total.
+
+\subsection{Conjuntos y Parámetros}
+
+El modelo se parametriza a partir de los tres elementos normalizados del archivo de entrada (\texttt{*.dzn}), sin constantes fijas de dimensión:
+\begin{itemize}
+    \item \textbf{Conjuntos:} $A = \{1, \dots, N\}$ (\texttt{ACTORES}, preservando el orden nominal de entrada, $N = |A| \in \mathbb{Z}^+$); $E = \{1, \dots, M\}$ (escenas, con $M = |\texttt{Duracion}| \in \mathbb{Z}^+$); y $K = \{1, \dots, M\}$ (posiciones o turnos secuenciales de grabación).
+    \item \textbf{Parámetros de entrada:} $p_{a,e} \in \{0, 1\}$ (\texttt{Escenas[a, e]}), igual a $1$ si el actor $a$ interviene en la escena $e$ y $0$ en otro caso; $c_a \in \mathbb{Z}_{\ge 0}$ (\texttt{Escenas[a, M+1]}), tarifa salarial del actor $a$ (cientos de miles de pesos por unidad de tiempo); y $d_e \in \mathbb{Z}^+$ (\texttt{Duracion[e]}), duración de la escena $e$.
+    \item \textbf{Parámetros derivados en compilación:}
+    \begin{align}
+        D_{\text{total}} &= \sum_{e \in E} d_e, \qquad
+        E_a = \{e \in E \mid p_{a,e} = 1\}, \qquad
+        K_a = |E_a| = \sum_{e \in E} p_{a,e} \label{eq:p1_derivados1} \\
+        D^{\min}_a &= \sum_{e \in E_a} d_e, \qquad
+        U^{(1)}_a = \begin{cases} D_{\text{total}}, & \text{si } K_a > 0 \\ 0, & \text{si } K_a = 0 \end{cases}, \qquad
+        C_{\text{fijo}} = \sum_{a \in A} c_a \cdot D^{\min}_a \label{eq:p1_derivados2}
+    \end{align}
+    donde $D_{\text{total}}$ es el horizonte total de rodaje, $E_a$ el subconjunto de escenas del actor $a$, $D^{\min}_a$ su tiempo efectivo de actuación y $C_{\text{fijo}}$ la cota salarial inferior alcanzable únicamente sin esperas. Sea además $d^{\uparrow}_1 \le d^{\uparrow}_2 \le \dots \le d^{\uparrow}_M$ el vector $d$ ordenado ascendentemente.
+\end{itemize}
+
+\subsection{Variables de Decisión y Dominios}
+
+Separando parámetros conocidos de incógnitas y aplicando consistencia de nodo inicial (Capítulo 5 de Apt) para excluir desde la raíz valores imposibles, se definen:
+\begin{enumerate}
+    \item \textbf{Secuencia primal ($Orden_k$, $k \in K$) y posición dual ($Pos_e$, $e \in E$):} Escena asignada al turno $k$ y turno en que se graba la escena $e$:
+    \begin{equation}
+        D(Orden_k) = E = \{1, \dots, M\} \;\; (\forall k \in K), \qquad
+        D(Pos_e) = K = \{1, \dots, M\} \;\; (\forall e \in E)
+        \label{eq:dom_orden_pos}
+    \end{equation}
+    \item \textbf{Tiempo acumulado ($Acum_k$, $k \in \{0, \dots, M\}$):} Instante en que concluye el turno $k$ ($Acum_0 = 0$). Las primeras $k$ escenas suman al menos las $k$ duraciones menores y a lo sumo las $k$ mayores:
+    \begin{equation}
+        D(Acum_k) = \left[\sum_{j=1}^{k} d^{\uparrow}_j \;\dots\; \sum_{j=M-k+1}^{M} d^{\uparrow}_j\right] \subseteq [0 \dots D_{\text{total}}], \quad \forall k \in \{0, \dots, M\}
+        \label{eq:dom_acum}
+    \end{equation}
+    \item \textbf{Turnos extremos por actor ($primera_a, ultima_a$, $a \in A$):} Primer y último turno donde actúa $a$. Si $K_a > 0$, tras $primera_a$ deben caber al menos las restantes $K_a - 1$ escenas de $E_a$ y hasta $ultima_a$ deben haberse filmado al menos $K_a$ escenas propias (fijándose a $\{1\}$ si $K_a = 0$):
+    \begin{equation}
+        D(primera_a) = \{1, \dots, M - K_a + 1\}, \qquad
+        D(ultima_a) = \{K_a, \dots, M\} \quad (K_a > 0)
+        \label{eq:dom_prim_ult}
+    \end{equation}
+    \item \textbf{Ingreso, salida, permanencia y espera ($ini_a, fin_a, tiempo_a, espera_a$, $a \in A$):} Instantes de llegada y retiro del estudio, estadía continua total y tiempo sin actuar dentro del set. Como tras $ini_a$ resta al menos $D^{\min}_a$ de actuación propia y antes de $fin_a$ transcurre al menos $D^{\min}_a$ (con dominio $\{0\}$ si $K_a = 0$):
+    \begin{align}
+        D(ini_a) &= [0 \dots D_{\text{total}} - D^{\min}_a], &
+        D(fin_a) &= [D^{\min}_a \dots D_{\text{total}}] \nonumber \\
+        D(tiempo_a) &= [D^{\min}_a \dots U^{(1)}_a], &
+        D(espera_a) &= [0 \dots U^{(1)}_a - D^{\min}_a]
+        \label{eq:dom_tiempo_espera}
+    \end{align}
+    \item \textbf{Costo salarial total ($Costo$):} Variable objetivo con techo $\overline{C}_1 = \sum_{a \in A} c_a U^{(1)}_a$:
+    \begin{equation}
+        D(Costo) = [C_{\text{fijo}} \dots \overline{C}_1]
+        \label{eq:dom_costo_p1}
+    \end{equation}
+\end{enumerate}
+
+\subsection{Restricciones Primarias y Función Objetivo}
+
+El conjunto $\mathcal{C}_1 = \{C_1, C_2, C_3\}$ se formula sin condicionar sobre valores individuales de variables de decisión:
+\begin{enumerate}
+    \item \textbf{Biyección turno-escena ($C_1$):} Cada escena ocupa un único turno y $Orden$, $Pos$ son permutaciones inversas mutuas:
+    \begin{equation}
+        \forall j < k \in K:\; Orden_j \neq Orden_k, \qquad
+        \forall k \in K:\; Pos_{Orden_k} = k, \qquad
+        \forall e \in E:\; Orden_{Pos_e} = e
+        \label{eq:c1_inverse}
+    \end{equation}
+    \emph{Semántica:} Impide omitir o repetir escenas y enlaza la consulta por turno con la consulta por escena.
+
+    \item \textbf{Cronología acumulada ($C_2$):} El reloj del estudio avanza sin huecos en la duración de cada escena:
+    \begin{equation}
+        Acum_0 = 0, \qquad Acum_M = D_{\text{total}}, \qquad
+        \forall k \in K: \; Acum_k = Acum_{k-1} + d_{Orden_k}
+        \label{eq:c2_acum}
+    \end{equation}
+    \emph{Semántica:} El turno $k$ se ejecuta durante el intervalo $[Acum_{k-1}, Acum_k]$ de longitud $d_{Orden_k}$.
+
+    \item \textbf{Permanencia y espera por actor ($C_3$):} Para todo $a \in A$ con $K_a > 0$ (y $0$ cuando $K_a = 0$):
+    \begin{align}
+        primera_a &= \min_{e \in E_a} Pos_e, &
+        ultima_a &= \max_{e \in E_a} Pos_e, &
+        ini_a &= Acum_{primera_a - 1} \label{eq:c3_extremos} \\
+        fin_a &= Acum_{ultima_a}, &
+        tiempo_a &= fin_a - ini_a, &
+        espera_a &= tiempo_a - D^{\min}_a \label{eq:c3_tiempo}
+    \end{align}
+    \emph{Semántica:} $Acum_{primera_a - 1}$ marca el inicio de $primera_a$ y $Acum_{ultima_a}$ el término de $ultima_a$; su resta mide la estadía continua del actor en el set.
+\end{enumerate}
+
+La función objetivo $f_1$ minimiza el pago total al elenco:
+\begin{equation}
+    \text{Minimizar } Costo = \sum_{a \in A} c_a \cdot tiempo_a
+    \label{eq:obj_p1}
+\end{equation}
+\emph{Adecuación y búsqueda:} (i) Para cualquier permutación $\pi$, la suma telescópica $Acum_{ultima_a} - Acum_{primera_a - 1} = \sum_{k=primera_a}^{ultima_a} d_{\pi_k}$ calcula el cobro exacto (p.\ ej., en $\pi = (1,\dots,20)$ de ``Desenfreno de Pasiones'', para el Actor 3 da $primera_3 = 2$, $ultima_3 = 15$, $tiempo_3 = 21 - 2 = 19$ y costo $19 \times 5 = 95$); (ii) definir $primera_a$ y $ultima_a$ sobre el conjunto estático $E_a$ evita matrices booleanas reificadas; y (iii) separar $espera_a = tiempo_a - D^{\min}_a$ aísla el sobrecosto variable. La resolución usa \emph{Branch-and-Bound} sobre los turnos intercalados desde los extremos ($1, M, 2, M-1, \dots$) probando primero escenas de menor peso salarial ($E_1$, Sección~\ref{sec:busqueda}).
