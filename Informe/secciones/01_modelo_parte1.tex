@@ -2,28 +2,15 @@
 \section{Parte 1: Modelo COP de Planificación de Ensayos}
 \label{sec:modelo_parte1}
 
-El problema de planificar el orden de grabación o ensayo de las escenas de una telenovela (conocido en la literatura de Programación por Restricciones como \emph{Rehearsal Scheduling Problem} o \emph{Talent Scheduling Problem}, catalogado como \texttt{prob039} en CSPLib) constituye un Problema de Optimización con Restricciones sobre dominios enteros finitos ($\text{COP}(\mathcal{FD})$), definido formalmente por la cuádrupla $\mathcal{P}_1 = \langle \mathcal{X}_1, \mathcal{D}_1, \mathcal{C}_1, f_1 \rangle$ en el marco formal de Apt. Dado un conjunto conocido de escenas de duración heterogénea y una plantilla de actores cuyos honorarios se liquidan por unidad de tiempo continua de permanencia en el estudio (desde el inicio de la primera escena en que participan hasta la finalización de la última), el propósito del modelo $\mathcal{P}_1$ es determinar una permutación de rodaje de las escenas que minimice el desembolso salarial agregado de la productora.
+La planificación del orden de grabación de las escenas de una telenovela se formula como un Problema de Optimización con Restricciones sobre dominios enteros finitos ($\text{COP}(\mathcal{FD})$), dado por $\mathcal{P}_1 = \langle \mathcal{X}_1, \mathcal{D}_1, \mathcal{C}_1, f_1 \rangle$. Cada actor cobra por unidad de tiempo continua de permanencia en el estudio, contada desde el inicio de la primera escena en que participa hasta la finalización de la última; el objetivo es hallar una permutación de las escenas que minimice el costo salarial total.
 
-\subsection{Datos de Entrada, Conjuntos y Parámetros Derivados}
+\subsection{Conjuntos y Parámetros}
 
-La formulación se parametriza de manera completamente independiente del tamaño de la instancia a partir de los tres elementos normalizados del archivo de datos (\texttt{*.dzn}):
-
+El modelo se parametriza a partir de los tres elementos normalizados del archivo de entrada (\texttt{*.dzn}), sin constantes fijas de dimensión:
 \begin{itemize}
-    \item \textbf{Conjuntos de índices:}
-    \begin{itemize}
-        \item $A = \{1, 2, \dots, N\}$: conjunto enumerado de actores (\texttt{ACTORES}), conservando biyectivamente el orden nominal declarado en la entrada ($\text{Actor}_1 \mapsto 1, \dots, \text{Actor}_N \mapsto N$), donde $N = |A| \in \mathbb{Z}^+$.
-        \item $E = \{1, 2, \dots, M\}$: conjunto de escenas que integran la telenovela, con $M \in \mathbb{Z}^+$ deducido automáticamente como la longitud del vector de duraciones.
-        \item $K = \{1, 2, \dots, M\}$: conjunto ordenado de posiciones o turnos secuenciales de grabación en el plan de rodaje ($k \in K$).
-    \end{itemize}
-
-    \item \textbf{Parámetros primarios de entrada:}
-    \begin{itemize}
-        \item $p_{a,e} \in \{0, 1\}$ (\texttt{Escenas[a, e]} para $a \in A, e \in E$): matriz binaria de participación actoral; toma el valor $p_{a,e} = 1$ si el actor $a$ debe intervenir en la escena $e$, y $p_{a,e} = 0$ en caso contrario.
-        \item $c_a \in \mathbb{Z}_{\ge 0}$ (\texttt{Escenas[a, M+1]} para $a \in A$): tarifa salarial que devenga el actor $a$ (en cientos de miles de pesos) por cada unidad de tiempo que permanece en el estudio.
-        \item $d_e \in \mathbb{Z}^+$ (\texttt{Duracion[e]} para $e \in E$): duración estrictamente positiva (en unidades de tiempo) requerida para ensayar o grabar la escena $e$.
-    \end{itemize}
-
-    \item \textbf{Parámetros estructurales derivados en tiempo de compilación:}
+    \item \textbf{Conjuntos:} $A = \{1, \dots, N\}$ (\texttt{ACTORES}, preservando el orden nominal de entrada, $N = |A| \in \mathbb{Z}^+$); $E = \{1, \dots, M\}$ (escenas, con $M = |\texttt{Duracion}| \in \mathbb{Z}^+$); y $K = \{1, \dots, M\}$ (posiciones o turnos secuenciales de grabación).
+    \item \textbf{Parámetros de entrada:} $p_{a,e} \in \{0, 1\}$ (\texttt{Escenas[a, e]}), igual a $1$ si el actor $a$ interviene en la escena $e$ y $0$ en otro caso; $c_a \in \mathbb{Z}_{\ge 0}$ (\texttt{Escenas[a, M+1]}), tarifa salarial del actor $a$ (cientos de miles de pesos por unidad de tiempo); y $d_e \in \mathbb{Z}^+$ (\texttt{Duracion[e]}), duración de la escena $e$.
+    \item \textbf{Parámetros derivados en compilación:}
     \begin{align}
         D_{\text{total}} &= \sum_{e \in E} d_e, \qquad
         E_a = \{e \in E \mid p_{a,e} = 1\}, \qquad
@@ -32,107 +19,81 @@ La formulación se parametriza de manera completamente independiente del tamaño
         U^{(1)}_a = \begin{cases} D_{\text{total}}, & \text{si } K_a > 0 \\ 0, & \text{si } K_a = 0 \end{cases}, \qquad
         C_{\text{fijo}} = \sum_{a \in A} c_a \cdot D^{\min}_a \label{eq:p1_derivados2}
     \end{align}
-    donde $D_{\text{total}}$ es el horizonte temporal completo de rodaje, $E_a$ es el subconjunto estático de escenas propias del actor $a$, $D^{\min}_a$ es el tiempo efectivo de actuación de $a$ (cota inferior física incompresible de su estadía en el set) y $C_{\text{fijo}}$ es el piso salarial incompresible que se alcanzaría únicamente si ningún actor sufriera tiempos muertos de espera.
+    donde $D_{\text{total}}$ es el horizonte total de rodaje, $E_a$ el subconjunto de escenas del actor $a$, $D^{\min}_a$ su tiempo efectivo de actuación y $C_{\text{fijo}}$ la cota salarial inferior alcanzable únicamente sin esperas. Sea además $d^{\uparrow}_1 \le d^{\uparrow}_2 \le \dots \le d^{\uparrow}_M$ el vector $d$ ordenado ascendentemente.
 \end{itemize}
 
-\subsection{Variables de Decisión y Dominios Acotados a Priori}
+\subsection{Variables de Decisión y Dominios}
 
-Atendiendo rigurosamente al principio de separación entre parámetros conocidos e incógnitas y al criterio de consistencia de nodo inicial (Capítulo 5 de Apt), todas las variables se declaran sobre intervalos enteros finitos depurados de valores imposibles desde la raíz:
-
+Separando parámetros conocidos de incógnitas y aplicando consistencia de nodo inicial (Capítulo 5 de Apt), se definen:
 \begin{enumerate}
-    \item \textbf{Secuencia primal de grabación ($Orden_k$, para $k \in K$):} Identifica qué escena $e \in E$ se programa en el turno $k$-ésimo del cronograma:
+    \item \textbf{Secuencia primal ($Orden_k$, $k \in K$) y posición dual ($Pos_e$, $e \in E$):} Escena asignada al turno $k$ y turno en que se graba la escena $e$:
     \begin{equation}
-        D(Orden_k) = E = \{1, 2, \dots, M\}, \quad \forall k \in K
-        \label{eq:dom_orden}
+        D(Orden_k) = E = \{1, \dots, M\} \;\; (\forall k \in K), \qquad
+        D(Pos_e) = K = \{1, \dots, M\} \;\; (\forall e \in E)
+        \label{eq:dom_orden_pos}
     \end{equation}
-
-    \item \textbf{Ubicación dual por escena ($Pos_e$, para $e \in E$):} Representa el turno $k \in K$ en el cual es grabada la escena $e$:
-    \begin{equation}
-        D(Pos_e) = K = \{1, 2, \dots, M\}, \quad \forall e \in E
-        \label{eq:dom_pos}
-    \end{equation}
-
-    \item \textbf{Tiempo acumulado de rodaje ($Acum_k$, para $k \in \{0, 1, \dots, M\}$):} Denota el instante exacto de tiempo en que concluye la escena ubicada en la posición $k$ (con $Acum_0 = 0$ como origen temporal del estudio). Sea $d^{\uparrow}_1 \le d^{\uparrow}_2 \le \dots \le d^{\uparrow}_M$ la permutación ordenada ascendentemente del vector $d$; dado que las primeras $k$ posiciones suman al menos las $k$ duraciones más cortas y a lo sumo las $k$ más largas, su dominio acotado es:
+    \item \textbf{Tiempo acumulado ($Acum_k$, $k \in \{0, \dots, M\}$):} Instante en que concluye el turno $k$ ($Acum_0 = 0$). Las primeras $k$ escenas suman al menos las $k$ duraciones menores y a lo sumo las $k$ mayores:
     \begin{equation}
         D(Acum_k) = \left[\sum_{j=1}^{k} d^{\uparrow}_j \;\dots\; \sum_{j=M-k+1}^{M} d^{\uparrow}_j\right] \subseteq [0 \dots D_{\text{total}}], \quad \forall k \in \{0, \dots, M\}
         \label{eq:dom_acum}
     \end{equation}
-
-    \item \textbf{Posiciones extremas de citación actoral ($primera_a$ y $ultima_a$, para $a \in A$):} Indican respectivamente el primer y el último turno del cronograma en los que interviene el actor $a$. Si $K_a > 0$, dado que después de $primera_a$ deben caber al menos las restantes $K_a - 1$ escenas de $E_a$, y antes de $ultima_a$ deben haberse filmado al menos $K_a - 1$ escenas de $E_a$, sus dominios exactos son:
+    \item \textbf{Turnos extremos por actor ($primera_a, ultima_a$, $a \in A$):} Primer y último turno con participación de $a$ (fijados a $\{1\}$ si $K_a = 0$):
     \begin{equation}
-        D(primera_a) = \{1, \dots, M - K_a + 1\}, \quad
-        D(ultima_a) = \{K_a, \dots, M\} \quad (a \in A,\; K_a > 0)
+        D(primera_a) = \{1, \dots, M - K_a + 1\}, \qquad
+        D(ultima_a) = \{K_a, \dots, M\} \quad (K_a > 0)
         \label{eq:dom_prim_ult}
     \end{equation}
-    (fijándose canónicamente al singulete $\{1\}$ si $K_a = 0$).
-
-    \item \textbf{Instantes temporales de ingreso y retiro del estudio ($ini_a$ y $fin_a$, para $a \in A$):} Representan el instante exacto en que el actor $a$ ingresa al set (al comenzar $primera_a$) y el instante en que se retira (al finalizar $ultima_a$). Para todo actor activo ($K_a > 0$):
-    \begin{equation}
-        D(ini_a) = [0 \dots D_{\text{total}} - D^{\min}_a], \qquad
-        D(fin_a) = [D^{\min}_a \dots D_{\text{total}}]
-        \label{eq:dom_ini_fin}
-    \end{equation}
-    (y $D(ini_a) = D(fin_a) = \{0\}$ si $K_a = 0$).
-
-    \item \textbf{Permanencia total ($tiempo_a$) y tiempo muerto de espera ($espera_a$, para $a \in A$):} Cuantifican respectivamente el tiempo total continuo que el actor $a$ permanece en el estudio y la fracción de dicho tiempo durante la cual no actúa pero debe aguardar su siguiente escena:
-    \begin{equation}
-        D(tiempo_a) = [D^{\min}_a \dots U^{(1)}_a], \qquad
-        D(espera_a) = [0 \dots U^{(1)}_a - D^{\min}_a], \quad \forall a \in A
+    \item \textbf{Ingreso, salida, permanencia y espera ($ini_a, fin_a, tiempo_a, espera_a$, $a \in A$):} Instantes de llegada y retiro del estudio, estadía continua total y tiempo sin actuar dentro del estudio (con dominio $\{0\}$ si $K_a = 0$):
+    \begin{align}
+        D(ini_a) &= [0 \dots D_{\text{total}} - D^{\min}_a], &
+        D(fin_a) &= [D^{\min}_a \dots D_{\text{total}}] \nonumber \\
+        D(tiempo_a) &= [D^{\min}_a \dots U^{(1)}_a], &
+        D(espera_a) &= [0 \dots U^{(1)}_a - D^{\min}_a]
         \label{eq:dom_tiempo_espera}
-    \end{equation}
-
-    \item \textbf{Costo total de la planificación ($Costo$):} Variable entera objetivo acotada entre el piso sin esperas $C_{\text{fijo}}$ y el techo salarial máximo $\overline{C}_1 = \sum_{a \in A} c_a U^{(1)}_a$:
+    \end{align}
+    \item \textbf{Costo salarial total ($Costo$):} Variable objetivo con techo $\overline{C}_1 = \sum_{a \in A} c_a U^{(1)}_a$:
     \begin{equation}
         D(Costo) = [C_{\text{fijo}} \dots \overline{C}_1]
         \label{eq:dom_costo_p1}
     \end{equation}
 \end{enumerate}
 
-\subsection{Restricciones Primarias y Semántica Intuitiva}
+\subsection{Restricciones Primarias y Función Objetivo}
 
-El conjunto de restricciones primarias $\mathcal{C}_1 = \{C_1, C_2, C_3\}$ se expresa en forma matemática declarativa pura, sin emplear condicionales dependientes de variables de decisión:
-
+El conjunto $\mathcal{C}_1 = \{C_1, C_2, C_3\}$ se formula sin condicionar sobre valores individuales de variables de decisión:
 \begin{enumerate}
-    \item \textbf{Biyección de permutación entre turnos y escenas ($C_1$):} Cada escena debe ensayarse exactamente una vez y en cada posición del plan se graba una única escena, vinculando primal y dualmente los arreglos $Orden$ y $Pos$ como biyecciones inversas mutuas sin condicionar sobre valores individuales:
-    \begin{align}
-        \forall j, k \in K \text{ con } j < k:\quad & Orden_j \neq Orden_k \nonumber \\
-        \forall k \in K:\; Pos_{Orden_k} = k, \qquad & \forall e \in E:\; Orden_{Pos_e} = e
+    \item \textbf{Biyección turno-escena ($C_1$):} Cada escena ocupa un único turno y $Orden$, $Pos$ son permutaciones inversas mutuas:
+    \begin{equation}
+        \forall j < k \in K:\; Orden_j \neq Orden_k, \qquad
+        \forall k \in K:\; Pos_{Orden_k} = k, \qquad
+        \forall e \in E:\; Orden_{Pos_e} = e
         \label{eq:c1_inverse}
-    \end{align}
-    \emph{Semántica intuitiva:} Garantiza simultáneamente que ninguna escena se omita ni se repita, y permite consultar en tiempo constante tanto qué escena ocupa el turno $k$ como en qué turno se graba la escena $e$.
+    \end{equation}
+    \emph{Semántica:} Impide omitir o repetir escenas y enlaza la consulta por turno con la consulta por escena.
 
-    \item \textbf{Continuidad cronológica acumulada del rodaje ($C_2$):} El tiempo acumulado inicia en cero antes del primer turno y se incrementa exactamente en la duración de la escena asignada a cada posición sucesiva hasta completar $D_{\text{total}}$:
+    \item \textbf{Cronología acumulada ($C_2$):} El reloj del estudio avanza sin huecos en la duración de cada escena:
     \begin{equation}
         Acum_0 = 0, \qquad Acum_M = D_{\text{total}}, \qquad
         \forall k \in K: \; Acum_k = Acum_{k-1} + d_{Orden_k}
         \label{eq:c2_acum}
     \end{equation}
-    \emph{Semántica intuitiva:} Modela la línea de tiempo continua del estudio de grabación; el turno $k$ transcurre exactamente durante el intervalo temporal $[Acum_{k-1}, Acum_k]$ de longitud $d_{Orden_k}$.
+    \emph{Semántica:} El turno $k$ se ejecuta durante el intervalo $[Acum_{k-1}, Acum_k]$ de longitud $d_{Orden_k}$.
 
-    \item \textbf{Determinación del intervalo de presencia y espera en el estudio por actor ($C_3$):} Todo actor activo ($K_a > 0$) debe presentarse al inicio de la primera posición donde interviene una escena de su repertorio $E_a$ y solo puede retirarse al concluir la última escena de $E_a$:
+    \item \textbf{Permanencia y espera por actor ($C_3$):} Para todo $a \in A$ con $K_a > 0$ (y $0$ cuando $K_a = 0$):
     \begin{align}
-        \forall a \in A \text{ con } K_a > 0: \quad
         primera_a &= \min_{e \in E_a} Pos_e, &
-        ultima_a &= \max_{e \in E_a} Pos_e \label{eq:c3_extremos} \\
-        ini_a &= Acum_{primera_a - 1}, &
-        fin_a &= Acum_{ultima_a} \label{eq:c3_inifin} \\
+        ultima_a &= \max_{e \in E_a} Pos_e, &
+        ini_a &= Acum_{primera_a - 1} \label{eq:c3_extremos} \\
+        fin_a &= Acum_{ultima_a}, &
         tiempo_a &= fin_a - ini_a, &
         espera_a &= tiempo_a - D^{\min}_a \label{eq:c3_tiempo}
     \end{align}
-    (mientras que si $K_a = 0$, $ini_a = fin_a = tiempo_a = espera_a = 0$).
-    \emph{Semántica intuitiva:} Traduce fielmente la regla contractual del set: dado que $Acum_{primera_a - 1}$ es el instante exacto en que finaliza la escena inmediata anterior a $primera_a$ (es decir, el comienzo de $primera_a$) y $Acum_{ultima_a}$ es el instante en que concluye $ultima_a$, su diferencia $fin_a - ini_a$ mide exactamente la suma de duraciones $\sum_{k = primera_a}^{ultima_a} d_{Orden_k}$ de todas las escenas filmadas durante la permanencia continua del actor $a$ en el estudio.
+    \emph{Semántica:} $Acum_{primera_a - 1}$ marca el inicio de $primera_a$ y $Acum_{ultima_a}$ el término de $ultima_a$; su resta mide la estadía continua del actor en el set.
 \end{enumerate}
 
-\subsection{Función Objetivo y Justificación de Adecuación}
-
-La función objetivo $f_1$ minimiza el costo salarial total abonado al elenco por su tiempo de permanencia en el estudio:
+La función objetivo $f_1$ minimiza el pago total al elenco:
 \begin{equation}
     \text{Minimizar } Costo = \sum_{a \in A} c_a \cdot tiempo_a
     \label{eq:obj_p1}
 \end{equation}
-
-\paragraph{Justificación de adecuación al problema planteado.}
-La formulación $\mathcal{P}_1$ es exacta y estructuralmente idónea por tres razones matemáticas fundamentales: (i) para cualquier orden de rodaje $\pi = (Orden_1, \dots, Orden_M)$, la identidad telescópica $Acum_{ultima_a} - Acum_{primera_a - 1} = \sum_{k=primera_a}^{ultima_a} (Acum_k - Acum_{k-1}) = \sum_{k=primera_a}^{ultima_a} d_{\pi_k}$ reproduce sin error la regla de liquidación del enunciado (por ejemplo, en el orden identidad $\pi = (1,\dots,20)$ de ``Desenfreno de Pasiones'', para el Actor 3 se obtiene $primera_3 = 2$, $ultima_3 = 15$, $tiempo_3 = Acum_{15} - Acum_1 = 21 - 2 = 19$ y costo $19 \times 5 = 95$); (ii) al calcular $primera_a$ y $ultima_a$ directamente sobre el conjunto estático $E_a$ mediante $Pos_e$, se prescinde por completo de matrices booleanas reificadas para detectar el inicio y fin de cada actor; y (iii) la descomposición lineal $tiempo_a = D^{\min}_a + espera_a$ aísla explícitamente la componente variable de ineficiencia operativa ($espera_a$).
-
-\paragraph{Anotación de búsqueda del modelo.}
-Para completar la especificación operativa de $\mathcal{P}_1$, la resolución aplica una búsqueda completa \emph{Branch-and-Bound} sobre la secuencia intercalada desde los extremos hacia el centro (\emph{Outside-In}: turnos $1, M, 2, M-1, \dots$) seleccionando las variables en orden de dicho intercalado y asignando en cada turno la escena disponible de menor peso salarial actoral acumulado ($E_1$, sustentada teóricamente y comparada frente a otras siete estrategias en la Sección~\ref{sec:busqueda}).
+\emph{Adecuación y búsqueda:} (i) Para cualquier permutación $\pi$, la suma telescópica $Acum_{ultima_a} - Acum_{primera_a - 1} = \sum_{k=primera_a}^{ultima_a} d_{\pi_k}$ calcula el cobro exacto (p.\ ej., en $\pi = (1,\dots,20)$ de ``Desenfreno de Pasiones'', para el Actor 3 da $primera_3 = 2$, $ultima_3 = 15$, $tiempo_3 = 21 - 2 = 19$ y costo $19 \times 5 = 95$); (ii) definir $primera_a$ y $ultima_a$ sobre el conjunto estático $E_a$ evita matrices booleanas reificadas; y (iii) separar $espera_a = tiempo_a - D^{\min}_a$ aísla el sobrecosto variable. La resolución usa \emph{Branch-and-Bound} sobre los turnos intercalados desde los extremos ($1, M, 2, M-1, \dots$) probando primero escenas de menor peso salarial ($E_1$, Sección~\ref{sec:busqueda}).

@@ -2,48 +2,44 @@
 \section{Pruebas y Análisis Experimental}
 \label{sec:pruebas}
 
-Con el propósito de validar rigurosamente la corrección matemática, la escalabilidad combinatoria y el impacto individual de cada componente algorítmico en la Parte 1 y en la Parte 2, se construyó una batería sistemática de trece instancias (\nolinkurl{datos/parte1/} y \nolinkurl{datos/parte2/}) junto con una suite automatizada de siete pruebas integrales en Python (\nolinkurl{pruebas/test_telenovela.py}). Todos los experimentos se ejecutaron bajo condiciones idénticas sobre \texttt{MiniZinc} empleando dos motores de naturaleza algorítmica complementaria: \texttt{Gecode 6.4.0} (propagación clásica sobre dominios finitos con búsqueda \emph{Branch-and-Bound} determinista) y \texttt{Chuffed 0.14.0} (motor híbrido con generación perezosa de cláusulas, \emph{Lazy Clause Generation}, y aprendizaje de cláusulas \emph{nogood}). Adicionalmente, la suite contrasta cada óptimo contra un oráculo exacto independiente (Programación Dinámica $\mathcal{O}(M \cdot 2^M)$ de Held-Karp en Parte 1 y ramificación acotada con heurística admisible exacta en Parte 2), comprueba programáticamente la recuperación algebraica completa de las órbitas simétricas descartadas ($S_1 \times S_2 \times S_3$), valida enumeraciones \texttt{ACTORES} con nombres arbitrarios y filas de \texttt{Disponibilidad} permutadas, y audita estáticamente que los archivos \texttt{.mzn} no empleen constructos ajenos a los fundamentos del curso.
+Se evaluó una batería de 13 instancias (\nolinkurl{datos/parte1/} y \nolinkurl{datos/parte2/}, Tabla~\ref{tab:diseno_bateria}) junto con una suite de 7 pruebas automatizadas (\nolinkurl{pruebas/test_telenovela.py}) sobre \texttt{Gecode 6.4.0} y \texttt{Chuffed 0.14.0} (\emph{Lazy Clause Generation}). La suite verifica los óptimos frente a un oráculo independiente (Programación Dinámica Held-Karp $\mathcal{O}(M \cdot 2^M)$ en Parte 1 y \emph{Branch-and-Bound} exacto en Parte 2), comprueba la reconstrucción completa de las órbitas simétricas ($S_1 \times S_2 \times S_3$), valida enumeraciones \texttt{ACTORES} arbitrarias con filas de \texttt{Disponibilidad} permutadas y verifica que los modelos \texttt{.mzn} usen únicamente constructos del curso.
 
-\subsection{Diseño Sistemático de la Batería de 13 Instancias}
-
-El Cuadro~\ref{tab:diseno_bateria} sintetiza la configuración paramétrica de los trece archivos \texttt{.dzn}, abarcando progresivamente desde instancias base de verificación manual ($M=6$) hasta ``Desenfreno de Pasiones'' ($M=20$, $20! \approx 2{,}43 \times 10^{18}$ permutaciones):
-
-\begin{table}[H]
+\begin{table}[!htbp]
 \centering
-\caption{Caracterización estructural de las 13 instancias de prueba en \nolinkurl{datos/parte1/} y \nolinkurl{datos/parte2/}.}
+\caption{Caracterización de las 13 instancias de prueba en \nolinkurl{datos/parte1/} y \nolinkurl{datos/parte2/}.}
 \label{tab:diseno_bateria}
 \resizebox{\textwidth}{!}{%
 \setlength{\tabcolsep}{3.5pt}
 \begin{tabular}{llcccccl}
 \toprule
-\textbf{Archivo \texttt{.dzn}} & \textbf{Parte} & $N$ & $M$ & $D_{\text{tot}}$ & \textbf{Simetrías activas} & \textbf{Restricciones P2} & \textbf{Fenómeno estructural evaluado} \\
+\textbf{Archivo \texttt{.dzn}} & \textbf{Parte} & $N$ & $M$ & $D_{\text{tot}}$ & \textbf{Simetrías activas} & \textbf{Restricciones P2} & \textbf{Propiedad evaluada} \\
 \midrule
-\texttt{Trivial1.dzn}        & P1 (Oficial) & 3 &  6 & 12 & $S_1, S_2=\{3,4\}, S_3=\{1\}$           & ---                     & Caso base sin espera ($Costo^* = C_{\text{fijo}} = 255$) \\
-\texttt{Instancia01\_P1.dzn} & P1           & 5 &  8 & 13 & $S_1, S_2=\{3,5\},\{4,6\}, S_3=\{2,7\}$ & ---                     & Órbita simétrica de $48$ óptimos equivalentes \\
-\texttt{Instancia02\_P1.dzn} & P1           & 6 & 10 & 18 & $S_1$                                   & ---                     & Estrella dominante ($c_6 = 60$ vs.\ $c_1..c_5 \le 8$) \\
-\texttt{Instancia03\_P1.dzn} & P1           & 7 & 12 & 27 & $S_1$                                   & ---                     & Duraciones heterogéneas $d_e \in \{1..5\}$ ($R_2$--$R_4$) \\
-\texttt{Instancia04\_P1.dzn} & P1           & 8 & 15 & 27 & $S_1$                                   & ---                     & Escala intermedia-alta ($1{,}31 \times 10^{12}$ estados) \\
-\texttt{Desenfreno2.dzn}     & P1 (Oficial) & 8 & 20 & 27 & $S_1$                                   & ---                     & Telenovela completa ``Desenfreno de Pasiones'' \\
-\texttt{Desenfreno3.dzn}     & P1 (Oficial) & 8 & 20 & 27 & $S_1$                                   & ---                     & Réplica oficial de validación de formato E/S \\
+\texttt{Trivial1.dzn}        & P1 (Oficial) & 3 &  6 & 12 & $S_1, S_2=\{3,4\}, S_3=\{1\}$           & ---                          & Caso base sin espera ($Costo^* = C_{\text{fijo}} = 255$) \\
+\texttt{Instancia01\_P1.dzn} & P1           & 5 &  8 & 13 & $S_1, S_2=\{3,5\},\{4,6\}, S_3=\{2,7\}$ & ---                          & Órbita simétrica de $48$ óptimos equivalentes \\
+\texttt{Instancia02\_P1.dzn} & P1           & 6 & 10 & 18 & $S_1$                                   & ---                          & Actor dominante ($c_6 = 60$ vs.\ $c_1..c_5 \le 8$) \\
+\texttt{Instancia03\_P1.dzn} & P1           & 7 & 12 & 27 & $S_1$                                   & ---                          & Duraciones heterogéneas $d_e \in \{1..5\}$ ($R_2$--$R_4$) \\
+\texttt{Instancia04\_P1.dzn} & P1           & 8 & 15 & 27 & $S_1$                                   & ---                          & Escala intermedia-alta ($1{,}31 \times 10^{12}$ permutaciones) \\
+\texttt{Desenfreno2.dzn}     & P1 (Oficial) & 8 & 20 & 27 & $S_1$                                   & ---                          & Telenovela ``Desenfreno de Pasiones'' \\
+\texttt{Desenfreno3.dzn}     & P1 (Oficial) & 8 & 20 & 27 & $S_1$                                   & ---                          & Réplica oficial para validación de E/S \\
 \midrule
 \texttt{Trivial2.dzn}        & P2 (Oficial) & 4 &  6 & 12 & $S_1, S_2=\{3,4\}$                      & 3 topes, $|P_{\text{ev}}|=2$ & Caso base con \texttt{Disponibilidad} y \texttt{Evitar} \\
-\texttt{Instancia01\_P2.dzn} & P2           & 5 &  8 & 12 & $S_1$                                   & 4 topes, $|P_{\text{ev}}|=3$ & Desempate lexicográfico estricto ($TC^* = 5$) \\
-\texttt{Instancia02\_P2.dzn} & P2           & 6 & 10 & 18 & $S_1$                                   & 4 topes, $|P_{\text{ev}}|=3$ & Holgura nula $Disp_6 = D^{\min}_6 = 9$ en estrella \\
-\texttt{Instancia03\_P2.dzn} & P2           & 7 & 12 & 27 & $S_1$                                   & 3 topes, $|P_{\text{ev}}|=4$ & Sobrecosto por tope contractual ($1531 \to 1544$) \\
-\texttt{Instancia04\_P2.dzn} & P2           & 8 & 15 & 27 & $S_1$                                   & 4 topes, $|P_{\text{ev}}|=5$ & Escalamiento con $5$ pares conflictivos activos \\
+\texttt{Instancia01\_P2.dzn} & P2           & 5 &  8 & 12 & $S_1$                                   & 4 topes, $|P_{\text{ev}}|=3$ & Desempate lexicográfico ($TC^* = 5$) \\
+\texttt{Instancia02\_P2.dzn} & P2           & 6 & 10 & 18 & $S_1$                                   & 4 topes, $|P_{\text{ev}}|=3$ & Holgura nula $Disp_6 = D^{\min}_6 = 9$ \\
+\texttt{Instancia03\_P2.dzn} & P2           & 7 & 12 & 27 & $S_1$                                   & 3 topes, $|P_{\text{ev}}|=4$ & Sobrecosto por disponibilidad ($1531 \to 1544$) \\
+\texttt{Instancia04\_P2.dzn} & P2           & 8 & 15 & 27 & $S_1$                                   & 4 topes, $|P_{\text{ev}}|=5$ & Cinco pares conflictivos activos \\
 \texttt{Desenfreno4.dzn}     & P2 (Oficial) & 8 & 20 & 27 & $S_1$                                   & 5 topes, $|P_{\text{ev}}|=4$ & Caso completo con $Disp_7 = 5$ ($871 \to 880$) \\
 \bottomrule
 \end{tabular}%
 }
 \end{table}
 
-\subsection{Análisis de los Modelos y Resultados Generales en Parte 1 y Parte 2}
+\subsection{Resultados Generales y Comparación Parte 1 vs.\ Parte 2}
 
-Los Cuadros~\ref{tab:general_p1} y \ref{tab:general_p2} sintetizan las estadísticas provistas por MiniZinc (valor objetivo, nodos explorados, nodos fallidos y tiempo de respuesta) para el modelo completo ($M_3$, con estrategia $E_1$) en \texttt{Chuffed 0.14.0} y \texttt{Gecode 6.4.0} (con límite de $8\text{ s}$ para \texttt{Gecode} cuando $M = 20$).
+Las Tablas~\ref{tab:general_p1} y \ref{tab:general_p2} resumen las métricas del modelo completo ($M_3$, estrategia $E_1$, límite de $8\text{ s}$ en \texttt{Gecode} para $M=20$), y las Figuras~\ref{fig:gantt_p1}--\ref{fig:gantt_trivial2} presentan los cronogramas óptimos.
 
-\begin{table}[H]
+\begin{table}[!htbp]
 \centering
-\caption{Resultados experimentales sobre la batería de 7 instancias de la Parte 1 (estrategia $E_1$). El símbolo $\checkmark$ certifica optimalidad global demostrada.}
+\caption{Resultados sobre las 7 instancias de la Parte 1 ($E_1$). El símbolo $\checkmark$ indica optimalidad certificada.}
 \label{tab:general_p1}
 \resizebox{\textwidth}{!}{%
 \setlength{\tabcolsep}{3.5pt}
@@ -65,9 +61,9 @@ Los Cuadros~\ref{tab:general_p1} y \ref{tab:general_p2} sintetizan las estadíst
 }
 \end{table}
 
-\begin{table}[H]
+\begin{table}[!htbp]
 \centering
-\caption{Resultados experimentales sobre la batería de 6 instancias de la Parte 2 (estrategia $E_1$). Se reporta el par lexicográfico $(Costo^*, TC^*)$, nodos explorados, nodos fallidos y tiempo.}
+\caption{Resultados sobre las 6 instancias de la Parte 2 ($E_1$), reportando $(Costo^*, TC^*)$, nodos, fallos y tiempo.}
 \label{tab:general_p2}
 \resizebox{\textwidth}{!}{%
 \setlength{\tabcolsep}{3.0pt}
@@ -88,43 +84,40 @@ Los Cuadros~\ref{tab:general_p1} y \ref{tab:general_p2} sintetizan las estadíst
 }
 \end{table}
 
-\paragraph{Análisis comparativo entre Parte 1 y Parte 2 en ``Desenfreno de Pasiones''.}
-Las Figuras~\ref{fig:gantt_p1} y \ref{fig:gantt_p2} contrastan visualmente los cronogramas óptimos certificados de \texttt{Desenfreno2} y \texttt{Desenfreno4}, junto con la verificación detallada del caso base en la Figura~\ref{fig:gantt_trivial2}:
-
-\begin{figure}[H]
+\begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.99\textwidth]{parte1/gantt_desenfreno_p1.png}
-    \caption{Diagrama de Gantt del cronograma óptimo de la Parte 1 (\texttt{Desenfreno2.dzn}) con $Costo^* = 871$ ($C_{\text{fijo}} = 725$, sobrecosto de espera $= 146$) sobre el orden óptimo de 20 escenas ($4, 1, 11, 10, 13, 12, 3, 2, 6, 8, 7, 9, 20, 5, 15, 14, 17, 18, 16, 19$).}
+    \includegraphics[width=0.90\textwidth]{parte1/gantt_desenfreno_p1.png}
+    \caption{Cronograma óptimo de la Parte 1 (\texttt{Desenfreno2.dzn}): $Costo^* = 871$ ($C_{\text{fijo}} = 725$, espera $= 146$) con orden $(4, 1, 11, 10, 13, 12, 3, 2, 6, 8, 7, 9, 20, 5, 15, 14, 17, 18, 16, 19)$.}
     \label{fig:gantt_p1}
 \end{figure}
 
-\begin{figure}[H]
+\begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.99\textwidth]{parte2/gantt_desenfreno_p2_evitar.png}
-    \caption{Diagrama de Gantt del cronograma óptimo de la Parte 2 (\texttt{Desenfreno4.dzn}) con $Costo^* = 880$ y $TiempoCompartido^* = 37$ sobre el orden óptimo de 20 escenas ($4, 1, 11, 10, 13, 12, 3, 2, 9, 6, 8, 7, 5, 15, 14, 18, 17, 16, 20, 19$).}
+    \includegraphics[width=0.90\textwidth]{parte2/gantt_desenfreno_p2_evitar.png}
+    \caption{Cronograma óptimo de la Parte 2 (\texttt{Desenfreno4.dzn}): $Costo^* = 880$, $TC^* = 37$ con orden $(4, 1, 11, 10, 13, 12, 3, 2, 9, 6, 8, 7, 5, 15, 14, 18, 17, 16, 20, 19)$.}
     \label{fig:gantt_p2}
 \end{figure}
 
-\begin{figure}[H]
+\begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.95\textwidth]{parte2/verificacion_trivial2_p2.png}
-    \caption{Verificación gráfica sobre el caso base de la Parte 2 con $Costo^* = 450$ y $TC^* = 6$. La permutación canónica $(3, 4, 6, 2, 1, 5)$ es equivalente bajo la simetría de escenas gemelas $S_2$ a la secuencia $(4, 3, 6, 2, 1, 5)$.}
+    \includegraphics[width=0.86\textwidth]{parte2/verificacion_trivial2_p2.png}
+    \caption{Caso base Parte 2 (\texttt{Trivial2.dzn}) con $(Costo^*, TC^*) = (450, 6)$; el orden canónico $(3, 4, 6, 2, 1, 5)$ equivale bajo $S_2$ a $(4, 3, 6, 2, 1, 5)$.}
     \label{fig:gantt_trivial2}
 \end{figure}
 
-\begin{enumerate}
-    \item \textbf{Efecto estructural de la restricción \texttt{Disponibilidad}:} En la Parte 1 (Figura~\ref{fig:gantt_p1}), el óptimo global $Costo^* = 871$ agrupa sin una sola unidad de espera a los tres actores de mayor peso económico o cohesión: el Actor 6 (Narciso Perfiles, $c_6 = 40$, $T_6 = 7$), el Actor 8 ($c_8 = 20$, $T_8 = 6$) y el Actor 4 ($c_4 = 5$, $T_4 = 6$). Sin embargo, en dicho cronograma el Actor 7 ($c_7 = 4$) permanece en el set durante $T_7 = 7$ unidades (esperando durante las escenas $9$ y $20$). Al pasar a \texttt{Desenfreno4.dzn} (Figura~\ref{fig:gantt_p2}), la condición contractual $Disp_7 = 5 = D^{\min}_7$ vuelve infactible la solución de costo $871$: obliga a compactar de forma contigua el bloque $[E_8, E_7, E_5, E_{15}]$ en $t \in [15, 20]$, lo que desplaza la escena $9$ hacia $t \in [11, 12]$ (haciendo esperar $1$ unidad adicional al Actor 1, $+10$, y a los Actores 2, 3 y 5, compensado parcialmente en el extremo derecho), elevando el mínimo global exacto a $Costo^* = 880$ ($+9$ unidades monetarias, equivalentes a $\$900\,000$ pesos de sobrecosto por disponibilidad). Un fenómeno análogo ocurre entre \texttt{Instancia03\_P1} ($1531$) e \texttt{Instancia03\_P2} ($1544$).
-    \item \textbf{Aceleración paradójica de la resolución en Parte 2 ($6{,}62\text{ s} \to 1{,}62\text{ s}$):} Lejos de encarecer el tiempo de cómputo, las restricciones adicionales de la Parte 2 reducen los nodos explorados en ``Desenfreno de Pasiones'' en un factor de $4{,}29\times$ ($71\,753 \to 16\,742$ nodos), los nodos fallidos en $4{,}45\times$ ($69\,264 \to 15\,582$ fallos) y el tiempo de prueba de optimalidad en $4{,}09\times$. Esto se debe a que la cota redundante de amplitud posicional $R_3$ convierte los topes estrictos $Disp_7 = 5$ y $Disp_6 = 10$ en restricciones geométricas directas sobre $ultima_a - primera_a$, colapsando masivamente el espacio de permutaciones válidas desde el nodo raíz.
-    \item \textbf{Descomposición del tiempo compartido en \texttt{Evitar}:} En \texttt{Desenfreno4.dzn}, los cuatro pares conflictivos comparten obligatoriamente $\underline{TC} = 3 + 3 + 9 + 4 = 19$ unidades en escenas donde actúan juntos; las $18$ unidades restantes hasta $TC^* = 37$ son consecuencia inevitable de no separar los bloques de los Actores 1 y 4 respecto a los Actores 2 y 3 para no disparar el costo salarial por encima del óptimo prioritario $880$.
-\end{enumerate}
+\begin{itemize}
+    \item \textbf{Efecto de \texttt{Disponibilidad}:} En \texttt{Desenfreno2} ($Costo^* = 871$, Figura~\ref{fig:gantt_p1}), los Actores 6 ($c_6 = 40$), 8 ($c_8 = 20$) y 4 ($c_4 = 5$) no tienen esperas, pero el Actor 7 permanece $T_7 = 7$ unidades (espera en $E_9$ y $E_{20}$). En \texttt{Desenfreno4} (Figura~\ref{fig:gantt_p2}), $Disp_7 = 5 = D^{\min}_7$ invalida dicho plan y fuerza a agrupar $[E_8, E_7, E_5, E_{15}]$ en $t \in [15, 20]$, desplazando $E_9$ a $[11, 12]$ y subiendo el óptimo exacto a $Costo^* = 880$ ($+9$ unidades, $\$900\,000$ pesos; análogo a \texttt{Instancia03}: $1531 \to 1544$).
+    \item \textbf{Reducción de búsqueda en Parte 2 ($6{,}62\text{ s} \to 1{,}62\text{ s}$):} Pese a sumar variables y criterios, en ``Desenfreno de Pasiones'' los nodos caen $4{,}29\times$ ($71\,753 \to 16\,742$) y los fallos $4{,}45\times$ ($69\,264 \to 15\,582$) porque $R_3$ convierte $Disp_7 = 5$ y $Disp_6 = 10$ en cotas estrechas sobre $ultima_a - primera_a$ desde la raíz.
+    \item \textbf{Composición de \texttt{Evitar}:} En \texttt{Desenfreno4}, $\underline{TC} = 3 + 3 + 9 + 4 = 19$ unidades corresponden a escenas compartidas obligatorias; las $18$ restantes hasta $TC^* = 37$ provienen de no separar los bloques de los Actores 1 y 4 respecto a 2 y 3 para no elevar $Costo$ por encima de $880$.
+\end{itemize}
 
-\subsection{Análisis de Ablación: Eliminación de Simetrías vs.\ Modelo Original y Redundantes}
+\subsection{Ablación: Simetrías vs.\ Modelo Original y Redundantes}
 
-Para responder directamente al requerimiento experimental de la Sección 3.1 del enunciado (\emph{comparar el programa con eliminación de simetrías frente al original}) y cuantificar el aporte de las restricciones redundantes, el Cuadro~\ref{tab:ablacion} y las Figuras~\ref{fig:ablacion_p1} y \ref{fig:ablacion_p2} comparan cuatro configuraciones anidadas: $M_0$ (modelo primario original sin simetrías ni redundantes), $M_1$ ($M_0 + S_1..S_3$), $M_2$ ($M_0 + R_1..R_4$) y $M_3$ (modelo completo $M_0 + S_1..S_3 + R_1..R_4$).
+La Tabla~\ref{tab:ablacion} y las Figuras~\ref{fig:ablacion_p1}--\ref{fig:ablacion_p2} comparan el modelo primario original ($M_0$), solo simetrías ($M_1 = M_0 + S_1..S_3$), solo redundantes ($M_2 = M_0 + R_1..R_4$) y el modelo completo ($M_3$).
 
-\begin{table}[H]
+\begin{table}[!htbp]
 \centering
-\caption{Estudio de ablación experimental ($M_0$ a $M_3$) en Parte 1 y Parte 2 (\texttt{Gecode} para $M \le 12$; \texttt{Chuffed} con límite de $15\text{ s}$ para $M = 20$), reportando nodos explorados, nodos fallidos y tiempo de resolución.}
+\caption{Ablación ($M_0$ a $M_3$; \texttt{Gecode} para $M \le 12$, \texttt{Chuffed} con límite de $15\text{ s}$ para $M = 20$).}
 \label{tab:ablacion}
 \resizebox{\textwidth}{!}{%
 \setlength{\tabcolsep}{2.8pt}
@@ -146,38 +139,37 @@ Para responder directamente al requerimiento experimental de la Sección 3.1 del
 \texttt{Instancia03\_P2} & $(1544,37)$ & 149\,505 & 74\,731 & 0,653 &  71\,767 & 35\,874 & 0,314 &  26\,202 & 13\,079 & 0,239 & 13\,059 &  6\,520 & 0,122 \\
 \texttt{Desenfreno4}     & $(880,37)$  & 139\,661$^\ddagger$ & 136\,362 & 14,79 &  92\,992 & 90\,698 & 10,07 &  29\,302 & 27\,743 & 2,727 & 16\,742 & 15\,582 & 1,572 \\
 \bottomrule
-\multicolumn{14}{l}{\footnotesize $^\ddagger$Halla el valor óptimo pero agota el límite de $15\text{ s}$ sin lograr certificar optimalidad global.}
+\multicolumn{14}{l}{\footnotesize $^\ddagger$Halla el valor óptimo pero agota $15\text{ s}$ sin certificar optimalidad.}
 \end{tabular}%
 }
 \end{table}
 
-\begin{figure}[H]
+\begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.98\textwidth]{parte1/ablacion_poda_p1.png}
-    \caption{Impacto del rompimiento de simetrías ($S_1$--$S_3$) y de las restricciones redundantes ($R_1$--$R_4$) sobre nodos explorados y tiempos de resolución en la Parte 1.}
+    \includegraphics[width=0.83\textwidth]{parte1/ablacion_poda_p1.png}
+    \caption{Efecto de las simetrías ($S_1$--$S_3$) y redundantes ($R_1$--$R_4$) sobre nodos y tiempos en la Parte 1.}
     \label{fig:ablacion_p1}
 \end{figure}
 
-\begin{figure}[H]
+\begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.98\textwidth]{parte2/ablacion_y_tradeoff_p2.png}
-    \caption{Estudio de ablación en la Parte 2 y descomposición estructural entre costo salarial incompresible ($C_{\text{fijo}}$), sobrecosto de espera y tiempo compartido (\texttt{Evitar}).}
+    \includegraphics[width=0.83\textwidth]{parte2/ablacion_y_tradeoff_p2.png}
+    \caption{Ablación en la Parte 2 y descomposición entre $C_{\text{fijo}}$, espera y tiempo compartido (\texttt{Evitar}).}
     \label{fig:ablacion_p2}
 \end{figure}
 
-Los datos empíricos del Cuadro~\ref{tab:ablacion} confirman con precisión matemática las predicciones teóricas de la Sección~\ref{sec:implementacion}:
 \begin{itemize}
-    \item \textbf{Poda exacta por eliminación de simetrías ($M_0 \to M_1$ y $M_2 \to M_3$):} En instancias libres de escenas gemelas ni vacías como \texttt{Instancia03\_P1} e \texttt{Instancia03\_P2}, únicamente actúa la ruptura de inversión temporal $S_1$, la cual reduce los nodos explorados y los nodos fallidos exactamente a la mitad: de $374\,456$ a $181\,709$ nodos ($-51{,}5\%$) en Parte 1 y de $149\,505$ a $71\,767$ nodos ($-52{,}0\%$) en Parte 2 (e igualmente de $74\,856 \to 36\,964$ y $26\,202 \to 13\,059$ al combinarse con redundantes). Cuando además concurren escenas vacías ($S_3$) y pares de escenas gemelas ($S_2$), la ganancia se multiplica: en \texttt{Instancia01\_P1} las simetrías por sí solas reducen el árbol en $17{,}04\times$ ($443 \to 26$ nodos, $219 \to 10$ fallos) y en \texttt{Trivial2} en $3{,}24\times$ ($55 \to 17$ nodos). Más aún, en \texttt{Desenfreno4}, pasar de $M_0$ a $M_1$ permite completar la certificación de optimalidad en $10{,}07\text{ s}$, mientras que el modelo sin simetrías ($M_0$) agota los $15\text{ s}$.
-    \item \textbf{Sinergia multiplicativa con las restricciones redundantes ($M_3$):} En \texttt{Desenfreno2}, ni $M_0$ ni $M_1$ logran cerrar la prueba de optimalidad en $15\text{ s}$ debido a la debilidad de propagación de $Acum_{ultima_a} - Acum_{primera_a - 1}$ en las posiciones centrales no instanciadas. La incorporación de $R_1$--$R_4$ ($M_2$) habilita la prueba de optimalidad ($12{,}35\text{ s}$), y su unión con $S_1$--$S_3$ ($M_3$) la acelera a $6{,}60\text{ s}$, logrando reducciones conjuntas en nodos y fallos de $24{,}61\times$ en \texttt{Instancia01\_P1}, $10{,}13\times$ en \texttt{Instancia03\_P1}, $11{,}45\times$ en \texttt{Instancia03\_P2} y $8{,}34\times$ ($9{,}41\times$ en velocidad) en \texttt{Desenfreno4}.
+    \item \textbf{Aporte de simetrías ($M_0 \to M_1$, $M_2 \to M_3$):} Donde solo actúa $S_1$ (\texttt{Instancia03\_P1/P2}), los nodos y fallos se reducen a la mitad ($374\,456 \to 181\,709$, $-51{,}5\%$; $149\,505 \to 71\,767$, $-52{,}0\%$). Con escenas vacías y gemelas, $M_1$ reduce el árbol $17{,}04\times$ en \texttt{Instancia01\_P1} ($443 \to 26$ nodos) y $3{,}24\times$ en \texttt{Trivial2} ($55 \to 17$), y en \texttt{Desenfreno4} logra certificar optimalidad en $10{,}07\text{ s}$ frente al corte por tiempo de $M_0$.
+    \item \textbf{Combinación con redundantes ($M_3$):} En \texttt{Desenfreno2}, $M_0$ y $M_1$ agotan $15\text{ s}$ sin prueba de optimalidad; $R_1$--$R_4$ ($M_2$) cierran la prueba en $12{,}35\text{ s}$ y $M_3$ la baja a $6{,}60\text{ s}$, con reducciones totales de $24{,}61\times$ (\texttt{Instancia01\_P1}), $10{,}13\times$ (\texttt{Instancia03\_P1}), $11{,}45\times$ (\texttt{Instancia03\_P2}) y $8{,}34\times$ en nodos ($9{,}41\times$ en tiempo) sobre \texttt{Desenfreno4}.
 \end{itemize}
 
-\subsection{Análisis Estadístico de las Estrategias de Búsqueda (\texorpdfstring{$E_1$--$E_8$}{E1-E8})}
+\subsection{Comparación de Estrategias de Búsqueda (\texorpdfstring{$E_1$--$E_8$}{E1-E8})}
 
-El Cuadro~\ref{tab:estrategias} y la Figura~\ref{fig:estrategias} comparan las ocho estrategias diseñadas en la Sección~\ref{sec:busqueda} bajo un presupuesto estricto de $8{,}5\text{ s}$ por ejecución, registrando explícitamente nodos explorados, nodos fallidos y tiempo de respuesta.
+La Tabla~\ref{tab:estrategias} y la Figura~\ref{fig:estrategias} contrastan $E_1$--$E_8$ con límite de $8{,}5\text{ s}$ por corrida.
 
-\begin{table}[H]
+\begin{table}[!htbp]
 \centering
-\caption{Comparación estadística de las ocho estrategias de búsqueda ($E_1$--$E_8$) en el escenario intermedio de 12 escenas (\texttt{Gecode} y \texttt{Chuffed}) y en ``Desenfreno de Pasiones'' ($M=20$, Parte 1 y Parte 2 en \texttt{Chuffed}, límite de $8{,}5\text{ s}$).}
+\caption{Comparación de las estrategias $E_1$--$E_8$ en $M=12$ (\texttt{Gecode} y \texttt{Chuffed}) y $M=20$ (\texttt{Chuffed}, límite $8{,}5\text{ s}$).}
 \label{tab:estrategias}
 \resizebox{\textwidth}{!}{%
 \setlength{\tabcolsep}{2.4pt}
@@ -196,22 +188,20 @@ $E_6$ & Pos Costo + Med    & 582\,417$^*$ & 291\,174 & 8,292 & 94\,318$^*$ & 93\
 $E_7$ & Dom/WDeg Out-In    &  36\,956 &  18\,453 & 0,337 &  4\,049 &  3\,786 & 0,147 & \textbf{871}$\checkmark$ &  71\,753 & 69\,264 & 6,714          & \textbf{(880,37)}$\checkmark$ &  16\,742 & 15\,582 & 1,538 \\
 $E_8$ & Default Solver     & 146\,445 &  73\,167 & 1,168 & 161\,833$^*$ & 116\,481 & 8,295 & 1046$^*$           & 143\,053 & 87\,742 & 8,281          & (1094,48)$^*$                 & 132\,022 & 76\,344 & 8,279 \\
 \bottomrule
-\multicolumn{16}{l}{\footnotesize $\checkmark$ Optimalidad global certificada (\texttt{==========}). \quad $^*$Agota el límite de $8{,}5\text{ s}$ sin certificar optimalidad.}
+\multicolumn{16}{l}{\footnotesize $\checkmark$ Optimalidad certificada (\texttt{==========}). \quad $^*$Agota $8{,}5\text{ s}$ sin certificar optimalidad.}
 \end{tabular}%
 }
 \end{table}
 
-\begin{figure}[H]
+\begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.98\textwidth]{parte1/estrategias_busqueda_p1.png}
-    \caption{Comparación experimental de nodos explorados por las ocho estrategias de búsqueda ($E_1$--$E_8$) en $M=12$ (\texttt{Gecode} vs.\ \texttt{Chuffed}) y $M=20$ (\texttt{Desenfreno2} y \texttt{Desenfreno4}).}
+    \includegraphics[width=0.82\textwidth]{parte1/estrategias_busqueda_p1.png}
+    \caption{Nodos explorados por las estrategias $E_1$--$E_8$ en $M=12$ (\texttt{Gecode} y \texttt{Chuffed}) y $M=20$ (\texttt{Chuffed}).}
     \label{fig:estrategias}
 \end{figure}
 
-El análisis cruzado del Cuadro~\ref{tab:estrategias} evidencia cuatro hallazgos decisivos:
-\begin{enumerate}
-    \item \textbf{Insuficiencia severa de la estrategia por defecto ($E_8$):} La búsqueda nativa libre (\texttt{default}) explora $3{,}96\times$ más nodos y $3{,}96\times$ más fallos que $E_1$ en \texttt{Gecode} ($146\,445$ vs.\ $36\,964$ nodos; $73\,167$ vs.\ $18\,457$ fallos), agota el tiempo en \texttt{Instancia03\_P1} sobre \texttt{Chuffed} ($161\,833$ nodos, $116\,481$ fallos vs.\ $4\,049$ nodos en $E_1$), y en $M=20$ fracasa drásticamente quedando estancada en $Costo = 1046$ en \texttt{Desenfreno2} ($+175$ sobre el óptimo $871$) y en $(1094, 48)$ en \texttt{Desenfreno4} ($+214$ en costo y $+11$ en solape sobre $(880, 37)$). Esto demuestra de manera concluyente la necesidad de diseñar explícitamente la estrategia de distribución.
-    \item \textbf{Dominancia de la topología \emph{Outside-In} frente a la construcción izquierda-a-derecha:} En \texttt{Instancia03\_P1}, cambiar únicamente el orden de variables desde izquierda-a-derecha ($E_3$) hacia los extremos intercalados ($E_2$) reduce los nodos de \texttt{Chuffed} en $11{,}84\times$ ($66\,907 \to 5\,650$), los fallos en $12{,}82\times$ ($66\,234 \to 5\,166$) y el tiempo en $21{,}96\times$ ($4{,}282\text{ s} \to 0{,}195\text{ s}$), evitando además el agotamiento de tiempo en \texttt{Gecode} ($785\,034 \to 47\,716$ nodos).
-    \item \textbf{Aporte específico del reordenamiento salarial de valores ($E_1$ frente a $E_2$):} Comparar $E_1$ contra $E_2$ aísla limpiamente el efecto de ordenar las escenas candidatas por peso salarial ascendente $W_e$: en \texttt{Desenfreno4} reduce los nodos y fallos en $2{,}41\times$ ($40\,289 \to 16\,742$ nodos; $38\,085 \to 15\,582$ fallos; $3{,}92\text{ s} \to 1{,}59\text{ s}$), y en \texttt{Desenfreno2} marca la diferencia entre agotar el tiempo sin prueba de optimalidad ($E_2$, $98\,608$ nodos) y certificar rigurosamente $Costo^* = 871$ en $6{,}68\text{ s}$ ($E_1$). La variante adaptativa $E_7$ (\texttt{dom\_w\_deg} sobre el mismo arreglo \texttt{OrdenRangoExt}) iguala el árbol de $E_1$ confirmando la estabilidad de la topología \emph{Outside-In}.
-    \item \textbf{Ventaja estructural del aprendizaje de cláusulas (\texttt{Chuffed} vs.\ \texttt{Gecode}):} En problemas de permutación con costos de espera dependientes de pares $(primera_a, ultima_a)$, distintos prefijos y sufijos inducen exactamente el mismo subconjunto de actores activos en el bloque central (propiedad de programación dinámica explotada por el oráculo Held-Karp). Mientras que en \texttt{Gecode} la razón nodos/fallos se mantiene cercana a $2{:}1$ re-explorando subárboles isomorfos en distintas ramas DFS, \texttt{Chuffed} sintetiza cláusulas \emph{nogood} sobre los literales de orden $[Pos_e \le k]$ e intermediación, podando reutilizablemente configuraciones centrales equivalentes y logrando reducciones de $9\times$ a $46\times$ en nodos cuando $M \ge 12$.
-\end{enumerate}
+\begin{itemize}
+    \item \textbf{Limitación de la búsqueda por defecto ($E_8$):} En \texttt{Gecode} explora $3{,}96\times$ más nodos y fallos que $E_1$; en \texttt{Chuffed} agota el tiempo incluso en $M=12$, y en $M=20$ se estanca en $Costo = 1046$ (\texttt{Desenfreno2}) y $(1094, 48)$ (\texttt{Desenfreno4}), lejos de $871$ y $(880, 37)$.
+    \item \textbf{Efecto del orden \emph{Outside-In} ($E_3 \to E_2$) y del peso salarial ($E_2 \to E_1$):} Pasar de izquierda-a-derecha ($E_3$) a extremos intercalados ($E_2$) en \texttt{Instancia03\_P1} reduce $11{,}84\times$ los nodos y $21{,}96\times$ el tiempo en \texttt{Chuffed}. Ordenar además los valores por $W_e$ ascendente ($E_1$, igualada por $E_7$) recorta $2{,}41\times$ los nodos en \texttt{Desenfreno4} ($40\,289 \to 16\,742$) y permite certificar \texttt{Desenfreno2} en $6{,}68\text{ s}$.
+    \item \textbf{\texttt{Chuffed} vs.\ \texttt{Gecode}:} Distintos prefijos y sufijos generan el mismo conjunto de actores abiertos en el bloque central; mientras \texttt{Gecode} re-explora subárboles equivalentes por DFS (razón nodos/fallos $\approx 2{:}1$), \texttt{Chuffed} aprende cláusulas \emph{nogood} sobre literales de orden e intermediación, reduciendo entre $9\times$ y $46\times$ los nodos para $M \ge 12$.
+\end{itemize}

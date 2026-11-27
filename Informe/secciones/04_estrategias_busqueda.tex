@@ -2,69 +2,45 @@
 \section{La Búsqueda: Diseño y Sustentación de Estrategias}
 \label{sec:busqueda}
 
-En un problema de secuenciación sobre permutaciones de $M$ escenas, el tamaño del espacio combinatorio crece factorialmente como $|\mathfrak{S}_M| = M!$ (alcanzando $20! \approx 2{,}43 \times 10^{18}$ estados en ``Desenfreno de Pasiones''). Conforme al principio algorítmico del Capítulo 8 de Apt (\emph{Search Algorithm = Search Tree + Traversal Algorithm}) y al esquema de \emph{Branch-and-Bound} sobre dominios finitos, cada decisión binaria de ramificación divide el subproblema abierto imponiendo $x = v$ frente a $x \neq v$ bajo asignación puntual (o $x \le \lfloor (l+u)/2 \rfloor$ frente a $x > \lfloor (l+u)/2 \rfloor$ bajo bisección de intervalo), ejecutando propagación hasta punto fijo en cada nodo. Cada vez que el buscador alcanza una hoja factible con valor objetivo $Z_{\text{inc}}$, actualiza la solución incumbente e inyecta dinámicamente al almacén de restricciones la desigualdad estricta de mejora:
+El espacio de permutaciones crece como $|\mathfrak{S}_M| = M!$ ($20! \approx 2{,}43 \times 10^{18}$ en ``Desenfreno de Pasiones''). Bajo \emph{Branch-and-Bound} sobre dominios finitos (Capítulo 8 de Apt), cada ramificación aplica propagación hasta punto fijo y, al hallar una hoja factible incumbente, añade dinámicamente el corte de mejora estricta:
 \begin{equation}
     Costo \le Costo_{\text{inc}} - 1 \quad (\text{en } \mathcal{P}_1), \qquad
     ObjetivoLex \le ObjetivoLex_{\text{inc}} - 1 \quad (\text{en } \mathcal{P}_2)
     \label{eq:bnb_cut_telenovela}
 \end{equation}
-podando al retroceder todo subárbol cuya cota inferior deducida por propagación supere el miembro derecho de \eqref{eq:bnb_cut_telenovela}. La eficacia de este proceso (y su sinergia con generación perezosa de cláusulas en \texttt{Chuffed}) depende críticamente del orden topológico en que se fijan los turnos y de la heurística de valor.
 
-\subsection{Definición de las Ocho Estrategias de Búsqueda Exploradas}
+\subsection{Estrategias de Búsqueda Evaluadas (\texorpdfstring{$E_1$--$E_8$}{E1-E8})}
 
-Con el propósito de realizar una evaluación sistemática y rigurosa sin sobrecargar los modelos entregados con variables muertas, ambos archivos \texttt{.mzn} canalizan para la estrategia principal únicamente la vista reindexada $R_k = OrdenRango_k \in \{1,\dots,M\}$ que asocia a cada turno $k \in K$ el rango estático $r \in \{1,\dots,M\}$ de la escena $Orden_k$ según su \emph{peso salarial actoral ascendente} $W_e = \sum_{a \in A : p_{a,e}=1} c_a$ (desempatando estrictamente por menor índice $e$), y documentan las siete variantes adicionales ($E_2$--$E_8$) evaluadas mediante el arnés experimental. Defínanse el vector intercalado \emph{Outside-In} (de los extremos hacia el centro) y su homólogo reindexado por peso salarial:
-\begin{align}
-    \vec{z}_{\text{ext}} &= \big(Orden_1,\; Orden_M,\; Orden_2,\; Orden_{M-1},\; \dots,\; Orden_{\lceil (M+1)/2 \rceil}\big) \label{eq:vec_outside_in} \\
-    \vec{r}_{\text{ext}} &= \big(R_1,\; R_M,\; R_2,\; R_{M-1},\; \dots,\; R_{\lceil (M+1)/2 \rceil}\big) \nonumber
-\end{align}
-Las ocho estrategias evaluadas son:
-
+Sea $W_e = \sum_{a \in A : p_{a,e}=1} c_a$ el peso salarial de la escena $e$, y $R_k = OrdenRango_k \in \{1,\dots,M\}$ el rango estático de $Orden_k$ ordenado por $W_e$ ascendente (desempatando por menor $e$). Definiendo los vectores intercalados desde los extremos (\emph{Outside-In}):
+\begin{equation}
+    \vec{z}_{\text{ext}} = \big(Orden_1, Orden_M, Orden_2, Orden_{M-1}, \dots\big), \qquad
+    \vec{r}_{\text{ext}} = \big(R_1, R_M, R_2, R_{M-1}, \dots\big)
+    \label{eq:vec_outside_in}
+\end{equation}
+se comparan ocho estrategias:
 \begin{enumerate}
-    \item \textbf{$E_1$ (\emph{Outside-In} por rango salarial ascendente — Estrategia principal):}
-    Emplea \texttt{OrdenRangoExt} con selección \texttt{input\_order} y asignación \texttt{indomain\_min}. Instancia las posiciones alternando simétricamente entre el inicio y el final del rodaje ($1, M, 2, M-1, \dots$) y prueba en primer lugar las escenas de menor peso salarial acumulado $W_e$ en los extremos, reservando implícitamente las escenas multitudinarias y de actores costosos para el núcleo central del cronograma.
-
-    \item \textbf{$E_2$ (\emph{Outside-In} con índice nominal de escena):}
-    Emplea \texttt{OrdenExt} con \texttt{input\_order} e \texttt{indomain\_min}, conservando la topología de instanciación desde los extremos hacia el centro \eqref{eq:vec_outside_in}, pero seleccionando los valores según el identificador original $e = 1, 2, \dots, M$ sin ponderar las tarifas actorales.
-
-    \item \textbf{$E_3$ (Secuencial cronológica de izquierda a derecha):}
-    Recorre el arreglo \texttt{Orden} mediante \texttt{input\_order} y asigna con \texttt{indomain\_min}, construyendo el plan de rodaje de principio a fin ($k = 1, 2, \dots, M$) en orden numérico creciente.
-
-    \item \textbf{$E_4$ (\emph{First-Fail} puntual sobre turnos):}
-    Selecciona dinámicamente sobre \texttt{Orden} la posición $k \in K$ de menor dominio actual (\texttt{first\_fail}) y le asigna el menor índice disponible (\texttt{indomain\_min}).
-
-    \item \textbf{$E_5$ (\emph{First-Fail} por bisección de dominio):}
-    Selecciona la posición de menor dominio (\texttt{first\_fail}) y particiona su conjunto de escenas candidatas mediante bisección binaria (\texttt{indomain\_split}).
-
-    \item \textbf{$E_6$ (Vista dual por escenas críticas centradas):}
-    Invierte la perspectiva sobre el arreglo dual \texttt{PosCostoDesc} empleando orden de entrada y valor mediano (\texttt{indomain\_median}): selecciona primero las posiciones $Pos_e$ de las escenas con mayor peso salarial $W_e$ (donde actúan las estrellas más caras, como el Actor 6 con $c_6 = 40$ y el Actor 8 con $c_8 = 20$) y las ubica cerca de la mediana temporal del rodaje ($\approx M/2$).
-
-    \item \textbf{$E_7$ (Grado ponderado por conflictos sobre \emph{Outside-In}):}
-    Sobre el vector $\vec{r}_{\text{ext}}$ utiliza el selector adaptativo \texttt{dom\_w\_deg} junto con \texttt{indomain\_min}, ponderando el tamaño del dominio de cada variable entre el contador acumulado de fallos de los propagadores en que interviene.
-
-    \item \textbf{$E_8$ (Heurística nativa \texttt{default} de cada motor):}
-    Delega el control total de exploración en el buscador autónomo del solver (\emph{activity-based search} en \texttt{Gecode 6.4.0}; ramificación conflictiva VSIDS con aprendizaje de cláusulas nogood en \texttt{Chuffed 0.14.0}).
+    \item \textbf{$E_1$ (\emph{Outside-In} por peso salarial ascendente, principal):} Recorre $\vec{r}_{\text{ext}}$ en orden de índice (\texttt{input\_order}) y asigna el mínimo valor disponible (\texttt{indomain\_min}), alternando $1, M, 2, M-1, \dots$ con escenas de menor $W_e$.
+    \item \textbf{$E_2$ (\emph{Outside-In} por índice nominal):} Recorre $\vec{z}_{\text{ext}}$ con \texttt{input\_order} e \texttt{indomain\_min}, sin ponderar tarifas.
+    \item \textbf{$E_3$ (Izquierda a derecha):} Recorre $Orden$ con \texttt{input\_order} e \texttt{indomain\_min} en secuencia $k = 1, \dots, M$.
+    \item \textbf{$E_4$ (\emph{First-Fail} puntual):} Selecciona en $Orden$ el menor dominio (\texttt{first\_fail}) y asigna \texttt{indomain\_min}.
+    \item \textbf{$E_5$ (\emph{First-Fail} por bisección):} Usa \texttt{first\_fail} en $Orden$ con bisección (\texttt{indomain\_split}).
+    \item \textbf{$E_6$ (Escenas críticas al centro):} Recorre $Pos_e$ por $W_e$ descendente (\texttt{input\_order}) asignando el valor mediano (\texttt{indomain\_median}, $\approx M/2$).
+    \item \textbf{$E_7$ (\texttt{dom\_w\_deg} sobre \emph{Outside-In}):} Aplica el selector ponderado \texttt{dom\_w\_deg} con \texttt{indomain\_min} sobre $\vec{r}_{\text{ext}}$.
+    \item \textbf{$E_8$ (Nativa \texttt{default} del solver):} Búsqueda autónoma del motor (\emph{activity} en \texttt{Gecode}; VSIDS con cláusulas \emph{nogood} en \texttt{Chuffed}).
 \end{enumerate}
 
-\subsection{Sustentación Teórica de la Superioridad de la Estrategia \texorpdfstring{$E_1$}{E1}}
+\subsection{Sustentación Teórica de la Estrategia \texorpdfstring{$E_1$}{E1}}
 \label{subsec:sustento_e1}
 
-La drástica ventaja empírica de $E_1$ (y su complemento adaptativo con aprendizaje de cláusulas en \texttt{Chuffed}) frente a las heurísticas cronológicas o de fallo temprano convencionales se sustenta en tres propiedades estructurales exactas del problema de ensayos:
-
 \begin{itemize}
-    \item \textbf{Cierre bilateral temprano de intervalos actorales bajo ramificación \emph{Outside-In}:}
-    Al construir el cronograma de izquierda a derecha ($E_3$), se conoce con certeza el instante de llegada $ini_a$ de los actores que ya debutaron en $\{1,\dots,r\}$, pero su salida $fin_a$ permanece indeterminada hasta fijar las últimas posiciones cercanas a $M$, pues cualquier escena pendiente de $E_a$ aún podría ir en $r+1$ o en $M$. En consecuencia, $ultima_a$ conserva cota inferior pequeña y ningún literal de intermediación de la restricción redundante $R_1$ puede fijarse a $1$ en la mitad superior del árbol.
-    En cambio, al alternar los extremos $1, M, 2, M-1, \dots$ ($E_1$ y $E_2$), a profundidad $2r$ quedan fijados simultáneamente el prefijo $\{1,\dots,r\}$ y el sufijo $\{M-r+1,\dots,M\}$, confinando las escenas restantes al bloque central $\{r+1, \dots, M-r\}$. Todo actor $a$ presente al menos una vez en el prefijo y una vez en el sufijo tiene ya cerrados ambos extremos ($primera_a \le r$ y $ultima_a \ge M-r+1$), por lo que $R_1$ deduce en tiempo constante que dicho actor permanece esperando durante \emph{todas} las escenas ajenas restantes del bloque central, elevando de inmediato $\underline{Costo}$.
-
-    \item \textbf{Activación en profundidad $2$ de la ruptura de simetría $S_1$:}
-    Mientras que en $E_3$ la desigualdad $Orden_{q+1} < Orden_M$ solo puede evaluarse por completo al llegar a la hoja de profundidad $M$ (cuando se instancia $Orden_M$), en $E_1$ las variables $Orden_{q+1}$ y $Orden_M$ son las dos primeras variables activas en instanciarse, podando exactamente el $50\%$ del árbol combinatorio en el segundo nivel de profundidad.
-
-    \item \textbf{Alineación económica de la heurística de valor por peso salarial ascendente:}
-    En toda solución óptima de baja espera, las posiciones periféricas ($1, M, 2, M-1$) deben ocuparse con escenas de pocos actores y bajo costo salarial agregado (tales como la escena $4$ con solo el Actor 1, la escena $19$ con solo el Actor 5 o la escena $16$ con solo el Actor 6), mientras que las escenas densas donde confluyen cinco o seis actores simultáneamente (como las escenas $7$ y $8$ en ``Desenfreno de Pasiones'', con peso salarial conjunto $38$ y $48$ por unidad de tiempo) deben situarse en el centro del rodaje donde los intervalos de permanencia del elenco se cruzan naturalmente. Al ordenar los valores por $W_e$ creciente, $E_1$ descubre en las primeras ramas una solución incumbente de costo muy próximo al óptimo global ($871$ en Parte 1 y $880$ en Parte 2), maximizando el poder de poda del corte dinámico \eqref{eq:bnb_cut_telenovela} durante el resto de la prueba de optimalidad (Figura~\ref{fig:arbol_bnb_trivial2}).
+    \item \textbf{Cierre bilateral de intervalos actorales:} En $E_3$ ($1 \to M$), $ultima_a$ queda abierta hasta los niveles finales del árbol, por lo que $R_1$ no puede activar espera en niveles altos. En $E_1$ y $E_2$, a profundidad $2r$ quedan fijados $\{1,\dots,r\}$ y $\{M-r+1,\dots,M\}$; todo actor presente en ambos extremos cierra $primera_a \le r$ y $ultima_a \ge M-r+1$, haciendo que $R_1$ sume $+c_a d_e$ a $\underline{Costo}$ por cada escena ajena libre del centro.
+    \item \textbf{Ruptura de simetría $S_1$ en profundidad $2$:} Las variables $Orden_{q+1}$ y $Orden_M$ se instancian en los dos primeros niveles activos, podando el $50\%$ del árbol de inmediato (frente a profundidad $M$ en $E_3$).
+    \item \textbf{Orden económico de valores:} Ubicar escenas livianas en los bordes ($E_4, E_{19}, E_{16}$) deja en el centro las escenas con mayor carga salarial conjunta ($E_7$ con $W_7 = 38$, $E_8$ con $W_8 = 48$ en ``Desenfreno de Pasiones''), obteniendo incumbentes cercanos al óptimo desde las primeras hojas y fortaleciendo el corte \eqref{eq:bnb_cut_telenovela} (Figura~\ref{fig:arbol_bnb_trivial2}).
 \end{itemize}
 
-\begin{figure}[H]
+\begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.99\textwidth]{parte2/arbol_bnb_trivial2.png}
-    \caption{Efecto estructural de la propagación en raíz, la ruptura de simetrías ($S_1$--$S_3$), las restricciones redundantes ($R_1$--$R_4$) y la estrategia $E_1$ sobre el árbol \emph{Branch-and-Bound}: (a) obtención del óptimo global en la primera hoja factible y corte dinámico en \nolinkurl{Trivial2.dzn}; (b) reducción simultánea de nodos explorados y fallidos en $11{,}45\times$ sobre \nolinkurl{Instancia03_P2.dzn}.}
+    \includegraphics[width=0.90\textwidth]{parte2/arbol_bnb_trivial2.png}
+    \caption{Árbol \emph{Branch-and-Bound} bajo $S_1$--$S_3$, $R_1$--$R_4$ y $E_1$: (a) óptimo en la primera hoja y corte dinámico en \nolinkurl{Trivial2.dzn}; (b) reducción de nodos y fallos en $11{,}45\times$ sobre \nolinkurl{Instancia03_P2.dzn}.}
     \label{fig:arbol_bnb_trivial2}
 \end{figure}
