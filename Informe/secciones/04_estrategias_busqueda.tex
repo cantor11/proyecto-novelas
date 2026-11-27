@@ -2,7 +2,7 @@
 \section{La Búsqueda: Diseño y Sustentación de Estrategias}
 \label{sec:busqueda}
 
-El espacio de permutaciones crece como $|\mathfrak{S}_M| = M!$ ($20! \approx 2{,}43 \times 10^{18}$ en ``Desenfreno de Pasiones''). Bajo \emph{Branch-and-Bound} sobre dominios finitos (Capítulo 8 de Apt), cada ramificación aplica propagación hasta punto fijo y, al hallar una hoja factible incumbente, añade dinámicamente el corte de mejora estricta:
+El espacio de permutaciones crece como $|\mathfrak{S}_M| = M!$ ($20! \approx 2{,}43 \times 10^{18}$ en ``Desenfreno de Pasiones''). Bajo el esquema \emph{Branch-and-Bound} sobre dominios finitos (Capítulo 8 de Apt), cada nodo interno divide el subproblema imponiendo $x = v$ frente a $x \neq v$ en asignación puntual (o $x \le \lfloor(l+u)/2\rfloor$ frente a $x > \lfloor(l+u)/2\rfloor$ en bisección de intervalo), propagando restricciones hasta punto fijo; al hallar una hoja factible incumbente, inyecta dinámicamente el corte de mejora estricta:
 \begin{equation}
     Costo \le Costo_{\text{inc}} - 1 \quad (\text{en } \mathcal{P}_1), \qquad
     ObjetivoLex \le ObjetivoLex_{\text{inc}} - 1 \quad (\text{en } \mathcal{P}_2)
@@ -24,8 +24,8 @@ se comparan ocho estrategias:
     \item \textbf{$E_3$ (Izquierda a derecha):} Recorre $Orden$ con \texttt{input\_order} e \texttt{indomain\_min} en secuencia $k = 1, \dots, M$.
     \item \textbf{$E_4$ (\emph{First-Fail} puntual):} Selecciona en $Orden$ el menor dominio (\texttt{first\_fail}) y asigna \texttt{indomain\_min}.
     \item \textbf{$E_5$ (\emph{First-Fail} por bisección):} Usa \texttt{first\_fail} en $Orden$ con bisección (\texttt{indomain\_split}).
-    \item \textbf{$E_6$ (Escenas críticas al centro):} Recorre $Pos_e$ por $W_e$ descendente (\texttt{input\_order}) asignando el valor mediano (\texttt{indomain\_median}, $\approx M/2$).
-    \item \textbf{$E_7$ (\texttt{dom\_w\_deg} sobre \emph{Outside-In}):} Aplica el selector ponderado \texttt{dom\_w\_deg} con \texttt{indomain\_min} sobre $\vec{r}_{\text{ext}}$.
+    \item \textbf{$E_6$ (Escenas críticas al centro):} Recorre $Pos_e$ por $W_e$ descendente (\texttt{input\_order}, priorizando escenas de actores costosos como $c_6 = 40$ y $c_8 = 20$) y asigna el valor mediano (\texttt{indomain\_median}, $\approx M/2$).
+    \item \textbf{$E_7$ (\texttt{dom\_w\_deg} sobre \emph{Outside-In}):} Selecciona en $\vec{r}_{\text{ext}}$ la variable de menor razón $|D(x)|/\text{peso}(x)$ según el conteo acumulado de fallos de sus propagadores (\texttt{dom\_w\_deg}), asignando \texttt{indomain\_min}.
     \item \textbf{$E_8$ (Nativa \texttt{default} del solver):} Búsqueda autónoma del motor (\emph{activity} en \texttt{Gecode}; VSIDS con cláusulas \emph{nogood} en \texttt{Chuffed}).
 \end{enumerate}
 

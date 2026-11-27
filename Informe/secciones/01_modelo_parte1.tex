@@ -24,7 +24,7 @@ El modelo se parametriza a partir de los tres elementos normalizados del archivo
 
 \subsection{Variables de Decisión y Dominios}
 
-Separando parámetros conocidos de incógnitas y aplicando consistencia de nodo inicial (Capítulo 5 de Apt), se definen:
+Separando parámetros conocidos de incógnitas y aplicando consistencia de nodo inicial (Capítulo 5 de Apt) para excluir desde la raíz valores imposibles, se definen:
 \begin{enumerate}
     \item \textbf{Secuencia primal ($Orden_k$, $k \in K$) y posición dual ($Pos_e$, $e \in E$):} Escena asignada al turno $k$ y turno en que se graba la escena $e$:
     \begin{equation}
@@ -37,13 +37,13 @@ Separando parámetros conocidos de incógnitas y aplicando consistencia de nodo 
         D(Acum_k) = \left[\sum_{j=1}^{k} d^{\uparrow}_j \;\dots\; \sum_{j=M-k+1}^{M} d^{\uparrow}_j\right] \subseteq [0 \dots D_{\text{total}}], \quad \forall k \in \{0, \dots, M\}
         \label{eq:dom_acum}
     \end{equation}
-    \item \textbf{Turnos extremos por actor ($primera_a, ultima_a$, $a \in A$):} Primer y último turno con participación de $a$ (fijados a $\{1\}$ si $K_a = 0$):
+    \item \textbf{Turnos extremos por actor ($primera_a, ultima_a$, $a \in A$):} Primer y último turno donde actúa $a$. Si $K_a > 0$, tras $primera_a$ deben caber al menos las restantes $K_a - 1$ escenas de $E_a$ y hasta $ultima_a$ deben haberse filmado al menos $K_a$ escenas propias (fijándose a $\{1\}$ si $K_a = 0$):
     \begin{equation}
         D(primera_a) = \{1, \dots, M - K_a + 1\}, \qquad
         D(ultima_a) = \{K_a, \dots, M\} \quad (K_a > 0)
         \label{eq:dom_prim_ult}
     \end{equation}
-    \item \textbf{Ingreso, salida, permanencia y espera ($ini_a, fin_a, tiempo_a, espera_a$, $a \in A$):} Instantes de llegada y retiro del estudio, estadía continua total y tiempo sin actuar dentro del estudio (con dominio $\{0\}$ si $K_a = 0$):
+    \item \textbf{Ingreso, salida, permanencia y espera ($ini_a, fin_a, tiempo_a, espera_a$, $a \in A$):} Instantes de llegada y retiro del estudio, estadía continua total y tiempo sin actuar dentro del set. Como tras $ini_a$ resta al menos $D^{\min}_a$ de actuación propia y antes de $fin_a$ transcurre al menos $D^{\min}_a$ (con dominio $\{0\}$ si $K_a = 0$):
     \begin{align}
         D(ini_a) &= [0 \dots D_{\text{total}} - D^{\min}_a], &
         D(fin_a) &= [D^{\min}_a \dots D_{\text{total}}] \nonumber \\
